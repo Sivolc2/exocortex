@@ -26,7 +26,12 @@
     "setup-project": "pnpm install && python -m venv .venv && . .venv/bin/activate && pip install -r repo_src/backend/requirements.txt && pnpm setup-env",
     "ci": "pnpm lint && pnpm typecheck && pnpm test",
     "docs:serve": "mkdocs serve",
-    "docs:build": "mkdocs build"
+    "docs:build": "mkdocs build",
+    "obsidian:sync": "./repo_src/scripts/sync-obsidian.sh",
+    "obsidian:sync-incremental": "./repo_src/scripts/sync-obsidian-incremental.sh",
+    "obsidian:watch": "./repo_src/scripts/watch-obsidian.sh",
+    "obsidian:watch-smart": "./repo_src/scripts/watch-obsidian-smart.sh",
+    "obsidian:link": "echo 'Usage: ln -s /path/to/your/obsidian/vault repo_src/backend/documents' && echo 'Replace current: mv repo_src/backend/documents repo_src/backend/documents_backup && ln -s /path/to/your/obsidian/vault repo_src/backend/documents'"
   },
   "keywords": [],
   "author": "",
