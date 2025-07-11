@@ -1,0 +1,3 @@
+packages:
+  - repo_src/*
+  - repo_src/*/src  # for tsc references 
