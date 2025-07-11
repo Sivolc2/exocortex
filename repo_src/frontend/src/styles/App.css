@@ -16,11 +16,24 @@
   padding: 20px;
   text-align: center;
   border-bottom: 1px solid #444;
+  position: relative;
 }
 
 .chat-header h1 {
   margin: 0;
   font-size: 1.5em;
+}
+
+.settings-button {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #555;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 .chat-header p {
@@ -68,6 +81,12 @@
   border-bottom-left-radius: 4px;
 }
 
+.message-wrapper.tool .message-content {
+  background-color: #3d3d3d;
+  border: 1px solid #5a5a5a;
+  color: #ccc;
+}
+
 .message-role {
   font-weight: bold;
   font-size: 0.8em;
@@ -78,6 +97,10 @@
 .message-wrapper.user .message-role {
   text-align: right;
   color: #e0e0e0;
+}
+
+.message-wrapper.tool .message-role {
+  color: #a0e0ff;
 }
 
 .message-content p {

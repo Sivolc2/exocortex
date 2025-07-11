@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -22,13 +23,14 @@ if OPENROUTER_API_KEY:
         api_key=OPENROUTER_API_KEY,
     )
 
-async def ask_llm(prompt_text: str, system_message: str = "You are a helpful assistant.") -> str:
+async def ask_llm(prompt_text: str, system_message: str = "You are a helpful assistant.", model_override: Optional[str] = None) -> str:
     """
     Sends a prompt to the configured LLM via OpenRouter and returns the response.
     """
     if not client:
         return "Error: OpenRouter client not initialized. Is OPENROUTER_API_KEY set in repo_src/backend/.env?"
     
+    model_to_use = model_override or DEFAULT_MODEL_NAME
     try:
         messages = [
             {"role": "system", "content": system_message},
@@ -36,7 +38,7 @@ async def ask_llm(prompt_text: str, system_message: str = "You are a helpful ass
         ]
         
         response = client.chat.completions.create(
-            model=DEFAULT_MODEL_NAME,
+            model=model_to_use,
             messages=messages,
             temperature=0.2, # Lower temperature for more factual answers based on context
             max_tokens=2048,
@@ -45,5 +47,5 @@ async def ask_llm(prompt_text: str, system_message: str = "You are a helpful ass
         
         return response.choices[0].message.content
     except Exception as e:
-        print(f"Error calling OpenRouter API with model {DEFAULT_MODEL_NAME}: {e}")
+        print(f"Error calling OpenRouter API with model {model_to_use}: {e}")
         return f"Error: Failed to get response from LLM. Details: {str(e)}" 

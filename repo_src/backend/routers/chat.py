@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
 
 from repo_src.backend.data.schemas import ChatRequest, ChatResponse
-from repo_src.backend.llm_chat.chat_logic import process_chat_request
+# from repo_src.backend.llm_chat.chat_logic import process_chat_request # Old logic
+from repo_src.backend.agents.file_selection_agent import run_agent
 
 router = APIRouter(
     prefix="/api/chat",
@@ -15,8 +16,12 @@ async def handle_chat_request(request: ChatRequest):
     and returns the response.
     """
     try:
-        llm_response = await process_chat_request(request.prompt)
-        return ChatResponse(response=llm_response)
+        # Use the new agent-based logic
+        selected_files, response_text = await run_agent(
+            user_prompt=request.prompt, 
+            selection_model=request.selection_model, 
+            execution_model=request.execution_model)
+        return ChatResponse(response=response_text, selected_files=selected_files)
     except Exception as e:
         print(f"Error processing chat request: {e}")
         raise HTTPException(status_code=500, detail="An error occurred while processing your request.") 

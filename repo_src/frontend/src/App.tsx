@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, FormEvent } from 'react'
 import './styles/App.css'
+import SettingsModal from './components/SettingsModal';
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool';
   content: string;
 }
 
@@ -10,14 +11,23 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hello! Ask me a question about this repository or its features.'
+      content: 'Hello! Ask me a question about the documentation in this repository.'
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
+
+  // State for models, initialized from localStorage or defaults
+  const [selectionModel, setSelectionModel] = useState(() => localStorage.getItem('selectionModel') || 'anthropic/claude-3-haiku');
+  const [executionModel, setExecutionModel] = useState(() => localStorage.getItem('executionModel') || 'anthropic/claude-3.5-sonnet');
+
+  // Persist model choices to localStorage
+  useEffect(() => { localStorage.setItem('selectionModel', selectionModel); }, [selectionModel]);
+  useEffect(() => { localStorage.setItem('executionModel', executionModel); }, [executionModel]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,7 +53,11 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: input }),
+        body: JSON.stringify({ 
+          prompt: input,
+          selection_model: selectionModel,
+          execution_model: executionModel,
+        }),
       });
 
       if (!response.ok) {
@@ -51,7 +65,13 @@ function App() {
         throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: { selected_files: string[], response: string } = await response.json();
+      
+      // Add tool message if files were selected
+      if (data.selected_files && data.selected_files.length > 0) {
+        const toolMessage: Message = { role: 'tool', content: `Analyzing documents: ${data.selected_files.join(', ')}` };
+        setMessages(prev => [...prev, toolMessage]);
+      }
       const assistantMessage: Message = { role: 'assistant', content: data.response };
       setMessages(prev => [...prev, assistantMessage]);
 
@@ -67,15 +87,23 @@ function App() {
 
   return (
     <div className="chat-container">
+      {isSettingsOpen && (
+        <SettingsModal 
+          onClose={() => setIsSettingsOpen(false)}
+          selectionModel={selectionModel} setSelectionModel={setSelectionModel}
+          executionModel={executionModel} setExecutionModel={setExecutionModel}
+        />
+      )}
       <header className="chat-header">
-        <h1>Chat with your Docs</h1>
-        <p>Using OpenRouter and a local knowledge base</p>
+        <h1>Documentation Chat Agent</h1>
+        <p>Ask questions about the project documentation</p>
+        <button className="settings-button" onClick={() => setIsSettingsOpen(true)}>Settings</button>
       </header>
       <div className="messages-container">
         {messages.map((msg, index) => (
           <div key={index} className={`message-wrapper ${msg.role}`}>
             <div className="message-content">
-              <div className="message-role">{msg.role === 'user' ? 'You' : 'Assistant'}</div>
+              <div className="message-role">{msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}</div>
               <p>{msg.content}</p>
             </div>
           </div>
@@ -96,7 +124,7 @@ function App() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question about this repository..."
+          placeholder="Ask a question about the documentation..."
           aria-label="Chat input"
           disabled={isLoading}
         />

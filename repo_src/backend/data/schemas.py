@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class ItemBase(BaseModel):
@@ -29,7 +29,10 @@ class ItemResponse(ItemBase):
 class ChatRequest(BaseModel):
     """Schema for a chat request from the frontend."""
     prompt: str
+    selection_model: Optional[str] = None
+    execution_model: Optional[str] = None
 
 class ChatResponse(BaseModel):
     """Schema for a chat response sent to the frontend."""
-    response: str 
+    response: str
+    selected_files: Optional[List[str]] = None 
