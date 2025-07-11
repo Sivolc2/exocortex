@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 import os
 from pathlib import Path
+import csv
+import io
+from fastapi.responses import StreamingResponse
 
 from repo_src.backend.database.connection import get_db
 from repo_src.backend.database.models import IndexEntry
@@ -76,4 +79,62 @@ def scan_and_populate_index(db: Session = Depends(get_db)):
         added_count += 1
     
     db.commit()
-    return {"message": f"Successfully added {added_count} new files to the index."} 
+    return {"message": f"Successfully added {added_count} new files to the index."}
+
+@router.get("/export", response_class=StreamingResponse)
+def export_index_to_csv(db: Session = Depends(get_db)):
+    """
+    Exports the current index from the database to a CSV file.
+    """
+    stream = io.StringIO()
+    writer = csv.writer(stream)
+    
+    # Write header
+    writer.writerow(["file_path", "description", "tags"])
+    
+    entries = db.query(IndexEntry).order_by(IndexEntry.file_path).all()
+    for entry in entries:
+        writer.writerow([entry.file_path, entry.description, entry.tags])
+        
+    stream.seek(0)
+    
+    response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+    response.headers["Content-Disposition"] = "attachment; filename=index_export.csv"
+    return response
+
+@router.post("/import", status_code=status.HTTP_200_OK)
+async def import_index_from_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """
+    Imports index entries from a CSV file, updating existing entries and adding new ones.
+    """
+    # Check file extension and content type (be more lenient with content type)
+    if not (file.filename and file.filename.lower().endswith('.csv')) and file.content_type != "text/csv":
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a CSV file.")
+
+    contents = await file.read()
+    decoded_content = contents.decode('utf-8')
+    stream = io.StringIO(decoded_content)
+    reader = csv.DictReader(stream)
+
+    created_count = 0
+    updated_count = 0
+
+    for row in reader:
+        file_path = row.get("file_path")
+        if not file_path:
+            continue
+
+        entry = db.query(IndexEntry).filter(IndexEntry.file_path == file_path).first()
+        if entry:
+            # Update existing entry
+            entry.description = row.get("description", entry.description)
+            entry.tags = row.get("tags", entry.tags)
+            updated_count += 1
+        else:
+            # Create new entry
+            new_entry = IndexEntry(**row)
+            db.add(new_entry)
+            created_count += 1
+
+    db.commit()
+    return {"message": f"Import complete. Updated: {updated_count}, Created: {created_count}."} 

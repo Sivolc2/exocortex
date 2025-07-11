@@ -3,6 +3,7 @@ uvicorn
 sqlalchemy
 pydantic
 python-dotenv
+python-multipart # Required for FastAPI file uploads
 openai # For OpenRouter compatibility using the OpenAI SDK
 psycopg2-binary # Keep if you plan to support PostgreSQL, otherwise remove for pure SQLite 
 anthropic

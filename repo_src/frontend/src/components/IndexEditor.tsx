@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './IndexEditor.css';
 
 interface IndexEntry {
@@ -13,6 +13,7 @@ const IndexEditor: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [status, setStatus] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const fetchData = useCallback(async () => {
         try {
@@ -78,6 +79,38 @@ const IndexEditor: React.FC = () => {
         }
     };
 
+    const handleExport = () => {
+        window.location.href = '/api/index/export';
+    };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            setStatus('Importing CSV...');
+            const response = await fetch('/api/index/import', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || 'Import failed');
+            setStatus(data.message);
+            await fetchData();
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : 'Error during import.');
+        } finally {
+            setTimeout(() => setStatus(''), 5000);
+        }
+    };
+
     if (loading) return <div className="index-editor-container"><p>Loading index...</p></div>;
     if (error) return <div className="index-editor-container"><p>Error: {error}</p></div>;
 
@@ -85,7 +118,12 @@ const IndexEditor: React.FC = () => {
         <div className="index-editor-container">
             <div className="editor-toolbar">
                 <span className="toolbar-status">{status}</span>
-                <button onClick={handleScan}>Scan for new files</button>
+                <div className="toolbar-actions">
+                    <button onClick={handleScan}>Scan for new files</button>
+                    <button onClick={handleExport}>Export to CSV</button>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept=".csv" />
+                    <button onClick={handleImportClick}>Import from CSV</button>
+                </div>
             </div>
             <div className="table-container">
                 {entries.length === 0 ? (
