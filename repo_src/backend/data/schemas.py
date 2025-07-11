@@ -36,6 +36,20 @@ class ChatResponse(BaseModel):
     """Schema for a chat response sent to the frontend."""
     response: str
     selected_files: Optional[List[str]] = None 
+    
+# --- Schemas for Structured Index ---
 
-class IndexContent(BaseModel):
-    content: str 
+class IndexEntryBase(BaseModel):
+    file_path: str
+    description: Optional[str] = None
+    tags: Optional[str] = None
+
+class IndexEntryCreate(IndexEntryBase):
+    pass
+
+class IndexEntryUpdate(BaseModel):
+    description: Optional[str] = None
+    tags: Optional[str] = None
+
+class IndexEntryResponse(IndexEntryBase):
+    id: int 

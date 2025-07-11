@@ -9,17 +9,16 @@ interface Message {
 }
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: 'Hello! Ask me a question about the documentation in this repository.'
-    }
-  ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null)
   const [currentView, setCurrentView] = useState<'chat' | 'index'>('chat');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
+  // Move messages state here to persist across views
+  const [messages, setMessages] = useState<Message[]>([
+    { role: 'assistant', content: 'Hello! Ask me a question about the documentation in this repository.' }
+  ]);
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
@@ -96,6 +95,7 @@ function App() {
           executionModel={executionModel} setExecutionModel={setExecutionModel}
         />
       )}
+
       <header className="chat-header">
         <h1>Documentation Chat Agent</h1>
         <div className="view-switcher">
@@ -104,9 +104,9 @@ function App() {
         </div>
         <button className="settings-button" onClick={() => setIsSettingsOpen(true)}>Settings</button>
       </header>
-      
-      {currentView === 'chat' ? (
-        <div className="chat-view">
+
+      {currentView === 'chat' && (
+        <>
           <div className="messages-container">
             {messages.map((msg, index) => (
               <div key={index} className={`message-wrapper ${msg.role}`}>
@@ -117,31 +117,19 @@ function App() {
               </div>
             ))}
             {isLoading && (
-              <div className="message-wrapper assistant">
-                <div className="message-content">
-                  <div className="message-role">Assistant</div>
-                  <p className="loading-indicator">Thinking...</p>
-                </div>
-              </div>
+              <div className="message-wrapper assistant"><div className="message-content"><div className="message-role">Assistant</div><p className="loading-indicator">Thinking...</p></div></div>
             )}
             {error && <div className="error-message">Error: {error}</div>}
             <div ref={messagesEndRef} />
           </div>
           <form onSubmit={handleSubmit} className="chat-input-form">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a question about the documentation..."
-              aria-label="Chat input"
-              disabled={isLoading}
-            />
-            <button type="submit" disabled={isLoading}>
-              {isLoading ? 'Sending...' : 'Send'}
-            </button>
+            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask a question about the documentation..." aria-label="Chat input" disabled={isLoading} />
+            <button type="submit" disabled={isLoading}>{isLoading ? 'Sending...' : 'Send'}</button>
           </form>
-        </div>
-      ) : (
+        </>
+      )}
+
+      {currentView === 'index' && (
         <IndexEditor />
       )}
     </div>

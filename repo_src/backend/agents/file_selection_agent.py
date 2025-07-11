@@ -1,13 +1,14 @@
 import os
 import json
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any
+from sqlalchemy.orm import Session
 
 from repo_src.backend.llm_chat.llm_interface import ask_llm
+from repo_src.backend.database.models import IndexEntry
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
 DOCUMENTS_DIR = PROJECT_ROOT / "repo_src" / "backend" / "documents"
-INDEX_FILE_PATH = DOCUMENTS_DIR / "_index.md"
 
 def _get_project_file_tree() -> str:
     """
@@ -27,17 +28,32 @@ def _get_project_file_tree() -> str:
             lines.append(f'{indent[:-4]}{os.path.basename(root)}/')
 
         for f in sorted(files):
-            if f == '_index.md': # Exclude the index file itself from the tree
-                continue
             lines.append(f'{indent}{f}')
             
     return "\n".join(lines)
 
+def _get_structured_index_content(db: Session) -> str:
+    """
+    Retrieves structured index content from the database and formats it as a string.
+    """
+    entries = db.query(IndexEntry).order_by(IndexEntry.file_path).all()
+    if not entries:
+        return "No entries found in the structured index."
+    
+    formatted_entries = ["## Structured Index Content ##"]
+    for entry in entries:
+        formatted_entries.append(f"- FILE: {entry.file_path}")
+        if entry.description:
+            formatted_entries.append(f"  - DESCRIPTION: {entry.description}")
+        if entry.tags:
+            formatted_entries.append(f"  - TAGS: {entry.tags}")
+    return "\n".join(formatted_entries)
 
-async def select_relevant_files(user_prompt: str, file_tree: str, model: Optional[str]) -> List[str]:
+
+async def select_relevant_files(user_prompt: str, file_tree: str, db: Session, model: Optional[str]) -> List[str]:
     """
     Uses an LLM to select relevant files based on the user's prompt and a file tree.
-    It also uses a persistent, user-editable index file for high-level guidance.
+    It also uses a persistent, user-editable structured index from the database for high-level guidance.
     
     Returns:
         A list of file paths relative to the documents directory.
@@ -46,7 +62,7 @@ async def select_relevant_files(user_prompt: str, file_tree: str, model: Optiona
 You are an expert software engineer assistant. Your task is to analyze a user's request and identify the most relevant files from the documents directory to fulfill the request.
 
 You are provided with three pieces of information:
-1.  **Index File (_index.md) Content**: A manually-curated index of important topics, concepts, and file pointers. Give this file's content HIGH PRIORITY. It's the most important guide for you.
+1.  **Structured Index Content**: A manually-curated table of files, their descriptions, and tags. Give this content HIGH PRIORITY. It's the most important guide for you.
 2.  **Documents Directory File Tree**: A list of all available files.
 3.  **User Request**: The user's question or command.
 
@@ -56,11 +72,10 @@ Example response:
 ["project_overview.md", "tech_stack.md"]
 """
     
-    index_content = "The index file (_index.md) is empty or not found."
-    if INDEX_FILE_PATH.exists():
-        index_content = INDEX_FILE_PATH.read_text('utf-8')
+    # Get the structured index content from the database
+    structured_index_content = _get_structured_index_content(db)
     
-    full_prompt = f"## Index File (_index.md) Content ##\n{index_content}\n\n## Documents Directory File Tree ##\n{file_tree}\n\n## User Request ##\n{user_prompt}"
+    full_prompt = f"{structured_index_content}\n\n## Documents Directory File Tree ##\n{file_tree}\n\n## User Request ##\n{user_prompt}"
 
     try:
         raw_response = await ask_llm(full_prompt, system_message, model_override=model)
@@ -101,7 +116,7 @@ def _read_files_content(file_paths: List[str]) -> str:
     return "\n\n".join(all_content)
 
 
-async def execute_request_with_context(user_prompt: str, files_content: str, model: Optional[str]) -> str:
+async def execute_request_with_context(user_prompt: str, files_content: str, model: Optional[str], **kwargs: Any) -> str:
     """
     Uses an LLM to generate a final response based on the user prompt and the content of selected files.
     """
@@ -109,11 +124,11 @@ async def execute_request_with_context(user_prompt: str, files_content: str, mod
     
     full_prompt = f"## Relevant Documentation File(s) Content ##\n{files_content}\n\n## User Request ##\n{user_prompt}"
     
-    final_response = await ask_llm(full_prompt, system_message, model_override=model)
+    final_response = await ask_llm(full_prompt, system_message, model_override=model, **kwargs)
     return final_response
 
 
-async def run_agent(user_prompt: str, selection_model: Optional[str], execution_model: Optional[str]) -> Tuple[List[str], str]:
+async def run_agent(user_prompt: str, db: Session, selection_model: Optional[str], execution_model: Optional[str]) -> Tuple[List[str], str]:
     """
     Orchestrates the two-step agentic process: file selection and execution.
 
@@ -123,7 +138,7 @@ async def run_agent(user_prompt: str, selection_model: Optional[str], execution_
     print("Step 1: Generating documents directory file tree and selecting relevant files...")
     file_tree = _get_project_file_tree()
     
-    selected_files = await select_relevant_files(user_prompt, file_tree, model=selection_model)
+    selected_files = await select_relevant_files(user_prompt, file_tree, db, model=selection_model)
     
     if not selected_files:
         print("No relevant files selected or an error occurred. Proceeding without file context.")
