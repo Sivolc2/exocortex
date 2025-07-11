@@ -7,6 +7,7 @@ from repo_src.backend.llm_chat.llm_interface import ask_llm
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
 DOCUMENTS_DIR = PROJECT_ROOT / "repo_src" / "backend" / "documents"
+INDEX_FILE_PATH = DOCUMENTS_DIR / "_index.md"
 
 def _get_project_file_tree() -> str:
     """
@@ -26,6 +27,8 @@ def _get_project_file_tree() -> str:
             lines.append(f'{indent[:-4]}{os.path.basename(root)}/')
 
         for f in sorted(files):
+            if f == '_index.md': # Exclude the index file itself from the tree
+                continue
             lines.append(f'{indent}{f}')
             
     return "\n".join(lines)
@@ -34,20 +37,30 @@ def _get_project_file_tree() -> str:
 async def select_relevant_files(user_prompt: str, file_tree: str, model: Optional[str]) -> List[str]:
     """
     Uses an LLM to select relevant files based on the user's prompt and a file tree.
+    It also uses a persistent, user-editable index file for high-level guidance.
     
     Returns:
         A list of file paths relative to the documents directory.
     """
     system_message = """
-You are an expert software engineer assistant. Your task is to analyze a user's request and identify the most relevant files from the documents directory to fulfill the request. The documents directory file tree is provided below.
+You are an expert software engineer assistant. Your task is to analyze a user's request and identify the most relevant files from the documents directory to fulfill the request.
 
-Respond ONLY with a JSON array of file paths. The paths should be relative to the documents directory (e.g., just the filename if it's in the root of documents). Do not include any other text, explanation, or markdown formatting.
+You are provided with three pieces of information:
+1.  **Index File (_index.md) Content**: A manually-curated index of important topics, concepts, and file pointers. Give this file's content HIGH PRIORITY. It's the most important guide for you.
+2.  **Documents Directory File Tree**: A list of all available files.
+3.  **User Request**: The user's question or command.
+
+Based on all three, respond ONLY with a JSON array of file paths. The paths should be relative to the documents directory (e.g., "project_overview.md"). Do not include any other text, explanation, or markdown formatting.
 
 Example response:
 ["project_overview.md", "tech_stack.md"]
 """
     
-    full_prompt = f"## Documents Directory File Tree ##\n{file_tree}\n\n## User Request ##\n{user_prompt}"
+    index_content = "The index file (_index.md) is empty or not found."
+    if INDEX_FILE_PATH.exists():
+        index_content = INDEX_FILE_PATH.read_text('utf-8')
+    
+    full_prompt = f"## Index File (_index.md) Content ##\n{index_content}\n\n## Documents Directory File Tree ##\n{file_tree}\n\n## User Request ##\n{user_prompt}"
 
     try:
         raw_response = await ask_llm(full_prompt, system_message, model_override=model)

@@ -16,18 +16,39 @@
   padding: 20px;
   text-align: center;
   border-bottom: 1px solid #444;
-  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .chat-header h1 {
   margin: 0;
-  font-size: 1.5em;
+  font-size: 1.2em; /* Smaller to fit switcher */
+  white-space: nowrap;
+}
+
+.view-switcher {
+  display: flex;
+  background-color: #2c2c2c;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.view-switcher button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background-color: transparent;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+}
+
+.view-switcher button.active {
+  background-color: #4a4a4a;
+  color: white;
 }
 
 .settings-button {
-  position: absolute;
-  top: 15px;
-  right: 15px;
   background: #555;
   color: white;
   border: none;
@@ -44,7 +65,7 @@
 
 .messages-container {
   flex-grow: 1;
-  overflow-y: auto;
+  overflow-y: scroll;
   padding: 20px;
   display: flex;
   flex-direction: column;

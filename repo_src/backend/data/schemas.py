@@ -36,3 +36,6 @@ class ChatResponse(BaseModel):
     """Schema for a chat response sent to the frontend."""
     response: str
     selected_files: Optional[List[str]] = None 
+
+class IndexContent(BaseModel):
+    content: str 

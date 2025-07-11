@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, FormEvent } from 'react'
 import './styles/App.css'
 import SettingsModal from './components/SettingsModal';
+import IndexEditor from './components/IndexEditor';
 
 interface Message {
   role: 'user' | 'assistant' | 'tool';
@@ -17,6 +18,7 @@ function App() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null)
+  const [currentView, setCurrentView] = useState<'chat' | 'index'>('chat');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
@@ -96,42 +98,52 @@ function App() {
       )}
       <header className="chat-header">
         <h1>Documentation Chat Agent</h1>
-        <p>Ask questions about the project documentation</p>
+        <div className="view-switcher">
+          <button onClick={() => setCurrentView('chat')} className={currentView === 'chat' ? 'active' : ''}>Chat</button>
+          <button onClick={() => setCurrentView('index')} className={currentView === 'index' ? 'active' : ''}>Index Editor</button>
+        </div>
         <button className="settings-button" onClick={() => setIsSettingsOpen(true)}>Settings</button>
       </header>
-      <div className="messages-container">
-        {messages.map((msg, index) => (
-          <div key={index} className={`message-wrapper ${msg.role}`}>
-            <div className="message-content">
-              <div className="message-role">{msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}</div>
-              <p>{msg.content}</p>
-            </div>
+      
+      {currentView === 'chat' ? (
+        <div className="chat-view">
+          <div className="messages-container">
+            {messages.map((msg, index) => (
+              <div key={index} className={`message-wrapper ${msg.role}`}>
+                <div className="message-content">
+                  <div className="message-role">{msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}</div>
+                  <p>{msg.content}</p>
+                </div>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="message-wrapper assistant">
+                <div className="message-content">
+                  <div className="message-role">Assistant</div>
+                  <p className="loading-indicator">Thinking...</p>
+                </div>
+              </div>
+            )}
+            {error && <div className="error-message">Error: {error}</div>}
+            <div ref={messagesEndRef} />
           </div>
-        ))}
-        {isLoading && (
-           <div className="message-wrapper assistant">
-            <div className="message-content">
-               <div className="message-role">Assistant</div>
-               <p className="loading-indicator">Thinking...</p>
-            </div>
-          </div>
-        )}
-        {error && <div className="error-message">Error: {error}</div>}
-        <div ref={messagesEndRef} />
-      </div>
-      <form onSubmit={handleSubmit} className="chat-input-form">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question about the documentation..."
-          aria-label="Chat input"
-          disabled={isLoading}
-        />
-        <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Sending...' : 'Send'}
-        </button>
-      </form>
+          <form onSubmit={handleSubmit} className="chat-input-form">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask a question about the documentation..."
+              aria-label="Chat input"
+              disabled={isLoading}
+            />
+            <button type="submit" disabled={isLoading}>
+              {isLoading ? 'Sending...' : 'Send'}
+            </button>
+          </form>
+        </div>
+      ) : (
+        <IndexEditor />
+      )}
     </div>
   );
 }
