@@ -7,6 +7,8 @@
   "scripts": {
     "ctx:sync": "python repo_src/scripts/export_context.py",
     "registry:update": "pnpm ctx:sync",
+    "chat": "python repo_src/scripts/chat.py",
+    "chat:verbose": "python repo_src/scripts/chat.py --verbose",
     "diagrams:generate": "python repo_src/scripts/generate_diagrams.py",
     "refresh-docs": "pnpm registry:update && pnpm diagrams:generate",
     "dev": "turbo run dev",

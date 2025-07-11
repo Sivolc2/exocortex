@@ -13,25 +13,35 @@ FRONTEND_ENV_FILE="${FRONTEND_ENV_DIR}/.env"
 # Create backend .env file with default environment variables
 if [ ! -f "$BACKEND_ENV_FILE" ]; then
     echo "Creating ${BACKEND_ENV_FILE} with default environment variables..."
-    
+
     cat > "$BACKEND_ENV_FILE" << EOF
 # Database configuration
-DATABASE_URL=sqlite:///./app.db
+DATABASE_URL=sqlite:///./app_dev.db
 
 # API settings
 PORT=8000
 LOG_LEVEL=info
+
+# --- OpenRouter Configuration ---
+# Get your key from https://openrouter.ai/keys
+OPENROUTER_API_KEY="sk-or-v1-..."
+
+# Recommended model. See https://openrouter.ai/models for more.
+OPENROUTER_MODEL_NAME="anthropic/claude-3.5-sonnet"
+
+# Optional: For OpenRouter analytics/tracking
+YOUR_SITE_URL="http://localhost:5173"
+YOUR_APP_NAME="AI-Friendly Repo Chat"
 EOF
-    
+
     echo "${BACKEND_ENV_FILE} created."
 else
     echo "${BACKEND_ENV_FILE} already exists. Skipping."
 fi
 
-# Create frontend .env file with default environment variables
+# Create or update frontend .env file with default environment variables
 if [ ! -f "$FRONTEND_ENV_FILE" ]; then
     echo "Creating ${FRONTEND_ENV_FILE} with default environment variables..."
-    
     cat > "$FRONTEND_ENV_FILE" << EOF
 # API URL (for direct API calls, not via proxy)
 VITE_API_URL=http://localhost:8000
@@ -43,4 +53,5 @@ else
 fi
 
 echo "Environment file setup complete."
-echo "Please review the .env files in ${BACKEND_ENV_DIR} and ${FRONTEND_ENV_DIR} and customize if necessary." 
+echo "Please review the .env files in ${BACKEND_ENV_DIR} and ${FRONTEND_ENV_DIR} and customize if necessary."
+echo "IMPORTANT: You must add your OPENROUTER_API_KEY to repo_src/backend/.env for the chat to work." 

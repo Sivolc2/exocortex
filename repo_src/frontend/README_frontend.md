@@ -1,64 +1,50 @@
-# Frontend Application
+# Frontend Application (Chat Interface)
 
-This directory contains a React + TypeScript frontend application for interacting with the backend API.
+This directory contains a React + TypeScript frontend application that provides a chat interface for interacting with the backend.
 
 ## Features
 
-- View a list of items from the database
-- Add new items to the database
-- Delete items from the database
+- Send messages to an LLM assistant.
+- The assistant answers questions based on a set of documents loaded on the backend.
+- View a history of the conversation.
 
 ## Development
 
 ### Prerequisites
 
-- Node.js (14.x or above)
-- pnpm
+- Node.js 18+
+- pnpm (or npm/yarn)
 
-### Setup
+### Installation
 
-1. Install dependencies:
-   ```bash
-   pnpm install
-   ```
+From the project root:
 
-2. Set up environment variables:
-   ```bash
-   cd ../../
-   ./repo_src/scripts/setup-env.sh
-   ```
+```bash
+pnpm install
+```
 
 ### Running the development server
 
 ```bash
-pnpm dev
+pnpm dev:frontend
 ```
 
 This will start the development server on http://localhost:5173.
 
-### Building for production
-
-```bash
-pnpm build
-```
-
-The built files will be placed in the `dist` directory.
-
 ## Project Structure
 
 - `src/`: Source code
-  - `components/`: Reusable React components
-  - `styles/`: CSS files
-  - `App.tsx`: Main application component
+  - `styles/`: CSS files for styling the application
+  - `App.tsx`: Main application component containing all chat logic and UI
   - `main.tsx`: Application entry point
+  - `vite-env.d.ts`: TypeScript definitions for Vite environment variables.
 
 ## Technologies Used
 
 - React 18
 - TypeScript
 - Vite (build tool)
-- CSS (for styling)
 
 ## API Integration
 
-The frontend communicates with the backend API at `/api/items` for CRUD operations. The Vite development server is configured to proxy API requests to the backend server running on port 8000.
+The frontend communicates with the backend API at `/api/chat`. The Vite development server is configured via `vite.config.ts` to proxy API requests to the backend server running on port 8000, avoiding CORS issues in development.

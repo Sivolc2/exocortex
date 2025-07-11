@@ -23,3 +23,13 @@ class ItemResponse(ItemBase):
     
     class Config:
         from_attributes = True # Updated from orm_mode for Pydantic V2 compatibility 
+
+# --- Schemas for LLM Chat ---
+
+class ChatRequest(BaseModel):
+    """Schema for a chat request from the frontend."""
+    prompt: str
+
+class ChatResponse(BaseModel):
+    """Schema for a chat response sent to the frontend."""
+    response: str 
