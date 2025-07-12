@@ -32,6 +32,7 @@ else:
 from repo_src.backend.database.setup import init_db
 from repo_src.backend.database import models, connection # For example endpoints
 from repo_src.backend.routers.index import router as index_router
+from repo_src.backend.routers.transcribe import router as transcribe_router
 from repo_src.backend.routers.chat import router as chat_router # Import the chat router
 
 @asynccontextmanager
@@ -60,6 +61,7 @@ app.add_middleware(
 # Include routers
 app.include_router(index_router)
 app.include_router(chat_router)
+app.include_router(transcribe_router)
 
 @app.get("/")
 async def read_root():

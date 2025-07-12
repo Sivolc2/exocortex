@@ -161,6 +161,7 @@ __pycache__/
 **/coverage/
 
 # Temporary files at any level
+temp_audio/
 **/tmp/
 **/temp/
 **/.tmp/
@@ -185,3 +186,4 @@ docs/prd/last_response.json
 docs/prd/last_request.json
 
 repo_src/backend/documents*
+repo_src/backend/transcripts/

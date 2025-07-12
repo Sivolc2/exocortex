@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, FormEvent } from 'react'
+import { useState, useRef, useEffect, FormEvent } from 'react';
 import './styles/App.css'
-import SettingsModal from './components/SettingsModal';
+import SettingsModal from './components/SettingsModal'
 import IndexEditor from './components/IndexEditor';
 
 interface Message {
@@ -14,6 +14,12 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [currentView, setCurrentView] = useState<'chat' | 'index'>('chat');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcriptionStatus, setTranscriptionStatus] = useState('');
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<number | null>(null);
   
   // Move messages state here to persist across views
   const [messages, setMessages] = useState<Message[]>([
@@ -37,6 +43,73 @@ function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  const handleToggleRecording = () => {
+    setIsRecording(prev => !prev);
+  };
+
+  const sendAudioChunk = async () => {
+    if (audioChunksRef.current.length === 0) {
+      console.log("No audio data in chunk, skipping send.");
+      return;
+    }
+    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    audioChunksRef.current = [];
+
+    const formData = new FormData();
+    formData.append('file', audioBlob, `recording-${Date.now()}.webm`);
+
+    try {
+      setTranscriptionStatus('Transcribing chunk...');
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Transcription API call failed');
+      const data = await response.json();
+      setTranscriptionStatus(`Chunk saved. Preview: ${data.transcript_preview}`);
+    } catch (err) {
+      console.error('Error sending audio chunk:', err);
+      setTranscriptionStatus('Error saving chunk.');
+      setError(err instanceof Error ? err.message : 'Unknown transcription error');
+    }
+  };
+
+  useEffect(() => {
+    if (isRecording) {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          mediaRecorderRef.current = new MediaRecorder(stream);
+          mediaRecorderRef.current.ondataavailable = (event) => {
+            if (event.data.size > 0) audioChunksRef.current.push(event.data);
+          };
+          mediaRecorderRef.current.onstop = sendAudioChunk;
+          mediaRecorderRef.current.start();
+          setTranscriptionStatus('Recording...');
+          recordingIntervalRef.current = window.setInterval(() => {
+            if (mediaRecorderRef.current?.state === 'recording') {
+              mediaRecorderRef.current.stop();
+              mediaRecorderRef.current.start();
+            }
+          }, 15000); // Send a chunk every 15 seconds
+        })
+        .catch(err => {
+          console.error('Failed to start recording:', err);
+          setError('Could not access microphone.');
+          setIsRecording(false);
+        });
+    } else {
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+      if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
+      mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+      setTranscriptionStatus(transcriptionStatus.startsWith('Chunk saved') ? transcriptionStatus : 'Recording stopped.');
+    }
+    return () => { // Cleanup
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+      mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+    };
+  }, [isRecording]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -102,7 +175,12 @@ function App() {
           <button onClick={() => setCurrentView('chat')} className={currentView === 'chat' ? 'active' : ''}>Chat</button>
           <button onClick={() => setCurrentView('index')} className={currentView === 'index' ? 'active' : ''}>Index Editor</button>
         </div>
-        <button className="settings-button" onClick={() => setIsSettingsOpen(true)}>Settings</button>
+        <div className="header-actions">
+          <button onClick={handleToggleRecording} className={`record-button ${isRecording ? 'recording' : ''}`}>
+            {isRecording ? 'Stop Recording' : 'Start Recording'}
+          </button>
+          <button className="settings-button" onClick={() => setIsSettingsOpen(true)}>Settings</button>
+        </div>
       </header>
 
       {currentView === 'chat' && (
@@ -122,6 +200,7 @@ function App() {
             {error && <div className="error-message">Error: {error}</div>}
             <div ref={messagesEndRef} />
           </div>
+          <div className="transcription-status">{transcriptionStatus}</div>
           <form onSubmit={handleSubmit} className="chat-input-form">
             <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask a question about the documentation..." aria-label="Chat input" disabled={isLoading} />
             <button type="submit" disabled={isLoading}>{isLoading ? 'Sending...' : 'Send'}</button>
