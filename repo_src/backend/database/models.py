@@ -18,5 +18,10 @@ class IndexEntry(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     file_path = Column(String, unique=True, index=True, nullable=False)
+    source = Column(String, index=True, nullable=False, default="unknown")  # obsidian, notion, discord
     description = Column(String, nullable=True)
-    tags = Column(String, nullable=True) # Simple comma-separated tags 
+    tags = Column(String, nullable=True) # Simple comma-separated tags
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now()) 

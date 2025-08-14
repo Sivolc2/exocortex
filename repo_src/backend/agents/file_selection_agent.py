@@ -8,7 +8,7 @@ from repo_src.backend.llm_chat.llm_interface import ask_llm
 from repo_src.backend.database.models import IndexEntry
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
-DOCUMENTS_DIR = PROJECT_ROOT / "repo_src" / "backend" / "documents"
+DOCUMENTS_DIR = PROJECT_ROOT / "repo_src" / "backend" / "data" / "processed" / "current"
 
 def _estimate_token_count(text: str) -> int:
     """
@@ -89,6 +89,8 @@ You are provided with three pieces of information:
 1.  **Structured Index Content**: A manually-curated table of files, their descriptions, and tags. Give this content HIGH PRIORITY. It's the most important guide for you.
 2.  **Documents Directory File Tree**: A list of all available files.
 3.  **User Request**: The user's question or command.
+
+IMPORTANT: When selecting files, try to sample from different sources/directories when possible to provide diverse perspectives and comprehensive coverage. While some information might be concentrated in one source, aim to include files from various sources unless the query is very specific to a single area.
 
 Based on all three, respond ONLY with a JSON array of file paths. The paths should be relative to the documents directory (e.g., "project_overview.md"). Do not include any other text, explanation, or markdown formatting.
 

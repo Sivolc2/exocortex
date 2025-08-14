@@ -17,7 +17,8 @@ router = APIRouter(
 )
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
-DOCUMENTS_DIR = PROJECT_ROOT / "repo_src" / "backend" / "documents"
+# Point to the consolidated data from all sources
+CONSOLIDATED_DATA_DIR = PROJECT_ROOT / "repo_src" / "backend" / "data" / "processed" / "current"
 
 @router.get("/", response_model=List[schemas.IndexEntryResponse])
 def get_all_index_entries(db: Session = Depends(get_db)):
@@ -46,32 +47,47 @@ def update_index_entry(entry_id: int, entry_update: schemas.IndexEntryUpdate, db
 @router.post("/scan", status_code=status.HTTP_201_CREATED)
 def scan_and_populate_index(db: Session = Depends(get_db)):
     """
-    Scans the documents directory for markdown files and adds any new
-    files to the index.
+    Scans the consolidated data directory for markdown files from all sources
+    and adds any new files to the index with proper source attribution.
     """
-    if not DOCUMENTS_DIR.exists() or not DOCUMENTS_DIR.is_dir():
-        raise HTTPException(status_code=404, detail=f"Documents directory not found at {DOCUMENTS_DIR}")
+    if not CONSOLIDATED_DATA_DIR.exists() or not CONSOLIDATED_DATA_DIR.is_dir():
+        raise HTTPException(status_code=404, detail=f"Consolidated data directory not found at {CONSOLIDATED_DATA_DIR}")
 
     existing_files = {entry.file_path for entry in db.query(IndexEntry.file_path).all()}
     
-    found_files = set()
-    for root, _, files in os.walk(DOCUMENTS_DIR):
-        for file in files:
-            if file.endswith(".md"):
-                # Get path relative to DOCUMENTS_DIR
-                full_path = Path(root) / file
-                relative_path = str(full_path.relative_to(DOCUMENTS_DIR))
-                found_files.add(relative_path)
+    found_files = {}  # filepath -> source mapping
+    source_dirs = ["obsidian", "notion", "discord"]
+    
+    for source in source_dirs:
+        source_dir = CONSOLIDATED_DATA_DIR / source
+        if source_dir.exists() and source_dir.is_dir():
+            for root, _, files in os.walk(source_dir):
+                for file in files:
+                    if file.endswith(".md"):
+                        # Get path relative to CONSOLIDATED_DATA_DIR
+                        full_path = Path(root) / file
+                        relative_path = str(full_path.relative_to(CONSOLIDATED_DATA_DIR))
+                        found_files[relative_path] = source
 
-    new_files = found_files - existing_files
+    new_files = set(found_files.keys()) - existing_files
     added_count = 0
+    updated_count = 0
 
-    if not new_files:
-        return {"message": "Index is already up to date. No new files found."}
+    # Also update existing files if their source is unknown/outdated
+    for file_path in existing_files:
+        if file_path in found_files:
+            entry = db.query(IndexEntry).filter(IndexEntry.file_path == file_path).first()
+            if entry and (not entry.source or entry.source == "unknown"):
+                entry.source = found_files[file_path]
+                updated_count += 1
+
+    if not new_files and updated_count == 0:
+        return {"message": "Index is already up to date. No new files found and all sources are current."}
 
     for file_path in sorted(list(new_files)):
         new_entry = IndexEntry(
             file_path=file_path,
+            source=found_files[file_path],
             description="",
             tags=""
         )
@@ -79,7 +95,13 @@ def scan_and_populate_index(db: Session = Depends(get_db)):
         added_count += 1
     
     db.commit()
-    return {"message": f"Successfully added {added_count} new files to the index."}
+    
+    message = f"Successfully added {added_count} new files to the index"
+    if updated_count > 0:
+        message += f" and updated source info for {updated_count} existing files"
+    message += "."
+    
+    return {"message": message}
 
 @router.get("/export", response_class=StreamingResponse)
 def export_index_to_csv(db: Session = Depends(get_db)):
@@ -90,11 +112,11 @@ def export_index_to_csv(db: Session = Depends(get_db)):
     writer = csv.writer(stream)
     
     # Write header
-    writer.writerow(["file_path", "description", "tags"])
+    writer.writerow(["file_path", "source", "description", "tags"])
     
-    entries = db.query(IndexEntry).order_by(IndexEntry.file_path).all()
+    entries = db.query(IndexEntry).order_by(IndexEntry.source, IndexEntry.file_path).all()
     for entry in entries:
-        writer.writerow([entry.file_path, entry.description, entry.tags])
+        writer.writerow([entry.file_path, entry.source, entry.description, entry.tags])
         
     stream.seek(0)
     
@@ -127,12 +149,19 @@ async def import_index_from_csv(file: UploadFile = File(...), db: Session = Depe
         entry = db.query(IndexEntry).filter(IndexEntry.file_path == file_path).first()
         if entry:
             # Update existing entry
+            entry.source = row.get("source", entry.source or "unknown")
             entry.description = row.get("description", entry.description)
             entry.tags = row.get("tags", entry.tags)
             updated_count += 1
         else:
-            # Create new entry
-            new_entry = IndexEntry(**row)
+            # Create new entry with source fallback
+            new_entry_data = {
+                "file_path": file_path,
+                "source": row.get("source", "unknown"),
+                "description": row.get("description", ""),
+                "tags": row.get("tags", "")
+            }
+            new_entry = IndexEntry(**new_entry_data)
             db.add(new_entry)
             created_count += 1
 

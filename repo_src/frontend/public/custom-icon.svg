@@ -1,0 +1,21 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none"
+     xmlns="http://www.w3.org/2000/svg">
+  <g stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <!-- stylized brain blob -->
+    <path d="M96 64c-26 0-46 20-46 46 0 8 2 15 6 21-8 6-14 16-14 27 0 19 15 34 34 34h18
+             M160 64c26 0 46 20 46 46 0 8-2 15-6 21 8 6 14 16 14 27 0 19-15 34-34 34h-18" />
+    <!-- midline folds -->
+    <path d="M128 68c-8 10-12 19-12 30 0 14 8 22 12 36 4-14 12-22 12-36 0-11-4-20-12-30z"/>
+    <!-- orbit ring -->
+    <ellipse cx="128" cy="128" rx="100" ry="38" />
+    <!-- orbiting nodes -->
+    <circle cx="44" cy="128" r="10" fill="currentColor"/>
+    <circle cx="212" cy="128" r="10" fill="currentColor"/>
+    <circle cx="128" cy="90"  r="10" fill="currentColor"/>
+  </g>
+  <!-- subtle glow dots -->
+  <g fill="currentColor">
+    <circle cx="86" cy="150" r="4"/><circle cx="170" cy="150" r="4"/><circle cx="128" cy="172" r="4"/>
+  </g>
+  <title>Exocortex</title>
+</svg>

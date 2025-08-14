@@ -1,8 +1,8 @@
-vault_path: "vault" # Relative to project root
+vault_path: "repo_src/backend/data/processed/current" # Relative to project root
 llm:
-  selector_model: "claude-3-haiku-20240307"
-  chat_model: "claude-3-sonnet-20240229"
-  max_tokens: 150000
+  selector_model: "anthropic/claude-sonnet-4"
+  chat_model: "google/gemini-2.5-flash"
+  max_tokens: 300000
 
 # Files to always include in the context, regardless of the query.
 always_include:
@@ -22,7 +22,7 @@ sync_options:
 data_sources:
   obsidian:
     enabled: true
-    vault_path: "repo_src/backend/documents" # Path relative to project root
+    vault_path: "repo_src/backend/data/processed/current" # Path relative to project root
   notion:
     enabled: true # Set to true and fill in details below to enable
     database_id: "244771fe-f76d-8071-898d-e592136fd762" # AIMi database

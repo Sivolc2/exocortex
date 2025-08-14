@@ -42,6 +42,7 @@ class ChatResponse(BaseModel):
 
 class IndexEntryBase(BaseModel):
     file_path: str
+    source: str = "unknown"
     description: Optional[str] = None
     tags: Optional[str] = None
 
@@ -49,8 +50,14 @@ class IndexEntryCreate(IndexEntryBase):
     pass
 
 class IndexEntryUpdate(BaseModel):
+    source: Optional[str] = None
     description: Optional[str] = None
     tags: Optional[str] = None
 
 class IndexEntryResponse(IndexEntryBase):
-    id: int 
+    id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True 
