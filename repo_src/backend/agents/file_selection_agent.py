@@ -10,6 +10,30 @@ from repo_src.backend.database.models import IndexEntry
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
 DOCUMENTS_DIR = PROJECT_ROOT / "repo_src" / "backend" / "documents"
 
+def _estimate_token_count(text: str) -> int:
+    """
+    Estimates the number of tokens in a text string using a simple heuristic.
+    
+    This is a rough approximation based on word count and punctuation.
+    For more accurate counting, you could use tiktoken or similar libraries.
+    
+    Args:
+        text: The text to estimate tokens for
+        
+    Returns:
+        Estimated number of tokens
+    """
+    # Split by whitespace to get word count
+    words = text.split()
+    word_count = len(words)
+    
+    # Rough approximation: average English word is about 1.3 tokens
+    # Add extra for punctuation and special characters
+    token_estimate = int(word_count * 1.3)
+    
+    # Add small buffer for formatting, markdown, etc.
+    return int(token_estimate * 1.1)
+
 def _get_project_file_tree() -> str:
     """
     Generates a string representation of the documents directory file tree.
@@ -128,12 +152,12 @@ async def execute_request_with_context(user_prompt: str, files_content: str, mod
     return final_response
 
 
-async def run_agent(user_prompt: str, db: Session, selection_model: Optional[str], execution_model: Optional[str]) -> Tuple[List[str], str]:
+async def run_agent(user_prompt: str, db: Session, selection_model: Optional[str], execution_model: Optional[str]) -> Tuple[List[str], str, Optional[int]]:
     """
     Orchestrates the two-step agentic process: file selection and execution.
 
     Returns:
-        A tuple containing the list of selected files and the final response string.
+        A tuple containing the list of selected files, the final response string, and estimated token count.
     """
     print("Step 1: Generating documents directory file tree and selecting relevant files...")
     file_tree = _get_project_file_tree()
@@ -143,7 +167,7 @@ async def run_agent(user_prompt: str, db: Session, selection_model: Optional[str
     if not selected_files:
         print("No relevant files selected or an error occurred. Proceeding without file context.")
         final_response = await execute_request_with_context(user_prompt, "No files were selected as context.", model=execution_model)
-        return [], final_response
+        return [], final_response, None
 
     print(f"Selected files: {selected_files}")
 
@@ -153,9 +177,13 @@ async def run_agent(user_prompt: str, db: Session, selection_model: Optional[str
     if not files_content:
         print("Could not read content from any selected files. Proceeding without file context.")
         final_response = await execute_request_with_context(user_prompt, "The selected files could not be read.", model=execution_model)
-        return selected_files, final_response
+        return selected_files, final_response, None
 
+    # Calculate total token count for the files content
+    total_tokens = _estimate_token_count(files_content)
+    print(f"Estimated token count for selected files: {total_tokens:,}")
+    
     final_response = await execute_request_with_context(user_prompt, files_content, model=execution_model)
     
     print("Agent execution complete.")
-    return selected_files, final_response 
+    return selected_files, final_response, total_tokens 

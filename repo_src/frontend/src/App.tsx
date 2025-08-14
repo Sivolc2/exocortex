@@ -139,11 +139,16 @@ function App() {
         throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
       }
 
-      const data: { selected_files: string[], response: string } = await response.json();
+      const data: { selected_files: string[], response: string, total_tokens?: number } = await response.json();
       
       // Add tool message if files were selected
       if (data.selected_files && data.selected_files.length > 0) {
-        const toolMessage: Message = { role: 'tool', content: `Analyzing documents: ${data.selected_files.join(', ')}` };
+        const filesList = data.selected_files.join('\n');
+        const tokenInfo = data.total_tokens ? ` (≈${data.total_tokens.toLocaleString()} tokens)` : '';
+        const toolMessage: Message = { 
+          role: 'tool', 
+          content: `Analyzing documents${tokenInfo}:\n\n${filesList}` 
+        };
         setMessages(prev => [...prev, toolMessage]);
       }
       const assistantMessage: Message = { role: 'assistant', content: data.response };

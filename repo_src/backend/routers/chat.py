@@ -19,12 +19,12 @@ async def handle_chat_request(request: ChatRequest, db: Session = Depends(get_db
     """
     try:
         # Use the new agent-based logic
-        selected_files, response_text = await run_agent(
+        selected_files, response_text, total_tokens = await run_agent(
             db=db,
             user_prompt=request.prompt, 
             selection_model=request.selection_model, 
             execution_model=request.execution_model)
-        return ChatResponse(response=response_text, selected_files=selected_files)
+        return ChatResponse(response=response_text, selected_files=selected_files, total_tokens=total_tokens)
     except Exception as e:
         print(f"Error processing chat request: {e}")
         raise HTTPException(status_code=500, detail="An error occurred while processing your request.") 

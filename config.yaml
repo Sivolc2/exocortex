@@ -13,13 +13,19 @@ vault_extensions:
 exclude_patterns:
   - ".obsidian"
 
+# Sync behavior configuration
+sync_options:
+  mode: "incremental"  # "incremental" or "full_overwrite"
+  backup_on_sync: true  # Create timestamped backups
+  skip_unchanged: true  # Skip files that haven't changed (faster syncing)
+
 data_sources:
   obsidian:
     enabled: true
     vault_path: "repo_src/backend/documents" # Path relative to project root
   notion:
     enabled: true # Set to true and fill in details below to enable
-    database_id: "244771fef76d8071898de592136fd762"
+    database_id: "244771fe-f76d-8071-898d-e592136fd762" # AIMi database
   discord:
     enabled: true # Set to true and configure server/channel IDs below
     server_id: "1349170288373403719" # Also called Guild ID - replace with actual server ID

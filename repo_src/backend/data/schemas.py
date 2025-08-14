@@ -35,7 +35,8 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     """Schema for a chat response sent to the frontend."""
     response: str
-    selected_files: Optional[List[str]] = None 
+    selected_files: Optional[List[str]] = None
+    total_tokens: Optional[int] = None 
     
 # --- Schemas for Structured Index ---
 

@@ -3,6 +3,7 @@ import sys
 import json
 import yaml
 import re
+import hashlib
 from pathlib import Path
 from datetime import datetime
 import importlib
@@ -24,14 +25,24 @@ OUTPUT_DIR = PROJECT_ROOT / "repo_src" / "backend" / "data" / "processed"
 
 # --- Helper Functions ---
 
-def load_config() -> dict:
+def load_config() -> tuple:
     """Loads the main YAML configuration file."""
     print(f"Loading configuration from {CONFIG_PATH}...")
     with open(CONFIG_PATH, 'r') as f:
         config = yaml.safe_load(f)
     if "data_sources" not in config:
         raise ValueError("Configuration file must contain a 'data_sources' key.")
-    return config["data_sources"]
+    
+    # Load sync options with defaults
+    sync_options = config.get("sync_options", {})
+    sync_defaults = {
+        "mode": "incremental",
+        "backup_on_sync": True,
+        "skip_unchanged": True
+    }
+    sync_options = {**sync_defaults, **sync_options}
+    
+    return config["data_sources"], sync_options
 
 def get_fetcher_class(source_name: str):
     """Dynamically imports and returns the fetcher class for a given source."""
@@ -46,6 +57,35 @@ def get_fetcher_class(source_name: str):
               f"Ensure 'repo_src/backend/data_sources/fetch_{source_name}.py' exists "
               f"and contains a class named '{class_name}'.\\nDetails: {e}")
         return None
+
+def get_content_hash(content: str) -> str:
+    """Generate a hash of the content for change detection."""
+    return hashlib.md5(content.encode('utf-8')).hexdigest()
+
+def should_update_file(filepath: Path, content: str) -> bool:
+    """Check if file should be updated based on content changes."""
+    if not filepath.exists():
+        return True  # File doesn't exist, should create
+    
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            existing_content = f.read()
+        
+        # Extract content after frontmatter for comparison
+        if existing_content.startswith('---\n'):
+            parts = existing_content.split('---\n', 2)
+            if len(parts) >= 3:
+                existing_content = parts[2]  # Content after frontmatter
+        
+        # Compare hashes to detect changes
+        current_hash = get_content_hash(content)
+        existing_hash = get_content_hash(existing_content)
+        
+        return current_hash != existing_hash
+        
+    except Exception as e:
+        print(f"    WARNING: Could not read existing file {filepath}: {e}")
+        return True  # If we can't read, assume we should update
 
 def write_discord_files(discord_items: list, output_folder: Path):
     """Write Discord items to daily files organized by channel."""
@@ -111,10 +151,13 @@ def write_discord_files(discord_items: list, output_folder: Path):
             filename = f"{date_str}.md"
             filepath = channel_folder / filename
             
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write(combined_content.strip())
-            
-            print(f"    Written: {channel_name}/{filename}")
+            # Only write if content has changed
+            if should_update_file(filepath, combined_content.strip()):
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(combined_content.strip())
+                print(f"    Updated: {channel_name}/{filename}")
+            else:
+                print(f"    Unchanged: {channel_name}/{filename}")
 
 def write_source_files(items: list, output_folder: Path, source_name: str):
     """Write non-Discord source items to individual files."""
@@ -128,27 +171,39 @@ def write_source_files(items: list, output_folder: Path, source_name: str):
         filename = f"{safe_filename}.md"
         filepath = output_folder / filename
         
-        with open(filepath, "w", encoding="utf-8") as f:
-            # Write metadata as frontmatter
-            f.write("---\n")
-            f.write(f"source: {source_name}\n")
-            f.write(f"id: {item['id']}\n")
-            
-            if item.get('metadata'):
-                for key, value in item['metadata'].items():
-                    # Escape special characters in YAML values
-                    if isinstance(value, str) and any(c in value for c in [':', '"', "'"]):
-                        f.write(f"{key}: \"{str(value).replace('\"', '\\\"')}\"\n")
-                    else:
-                        f.write(f"{key}: {value}\n")
-            
-            f.write("---\n\n")
-            f.write(item['content'])
+        # Prepare full content with frontmatter
+        full_content = "---\n"
+        full_content += f"source: {source_name}\n"
+        full_content += f"id: {item['id']}\n"
         
-        if i < 5:  # Only show first 5 filenames to avoid spam
-            print(f"    Written: {filename}")
-        elif i == 5:
-            print(f"    ... and {len(items) - 5} more files")
+        if item.get('metadata'):
+            for key, value in item['metadata'].items():
+                # Escape special characters in YAML values
+                if isinstance(value, str) and any(c in value for c in [':', '"', "'"]):
+                    full_content += f"{key}: \"{str(value).replace('\"', '\\\"')}\"\n"
+                else:
+                    full_content += f"{key}: {value}\n"
+        
+        full_content += "---\n\n"
+        full_content += item['content']
+        
+        # Only write if content has changed
+        if should_update_file(filepath, item['content']):  # Compare just content, not frontmatter
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(full_content)
+            
+            if i < 5:  # Only show first 5 filenames to avoid spam
+                print(f"    Updated: {filename}")
+        else:
+            if i < 5:
+                print(f"    Unchanged: {filename}")
+    
+    # Summary
+    updated_count = sum(1 for item in items if should_update_file(output_folder / f"{re.sub(r'[<>:\"/\\\\|?*]', '_', str(item.get('id', 'item')))[:100]}.md", item['content']))
+    unchanged_count = len(items) - updated_count
+    
+    if len(items) > 5:
+        print(f"    Summary: {updated_count} updated, {unchanged_count} unchanged")
 
 # --- Main Execution ---
 
@@ -159,15 +214,17 @@ def main():
     2. Iterates through enabled data sources.
     3. Initializes and runs the corresponding fetcher for each source.
     4. Combines all fetched data.
-    5. Saves the result to a timestamped JSON file.
+    5. Saves the result using incremental or full sync as configured.
     """
     print("--- Starting Data Combination Process ---")
     
     try:
-        data_sources_config = load_config()
+        data_sources_config, sync_options = load_config()
     except (FileNotFoundError, ValueError) as e:
         print(f"ERROR: Failed to load configuration. {e}")
         return
+    
+    print(f"Sync mode: {sync_options['mode']}")
 
     all_data = []
     source_data_by_source = {}
@@ -191,12 +248,30 @@ def main():
     # Ensure the output directory exists
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Create a timestamped folder for this run
+    # Choose folder based on sync mode
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_folder = OUTPUT_DIR / f"data_export_{timestamp}"
-    run_folder.mkdir(exist_ok=True)
-
-    print(f"\\n>>> Creating structured export in {run_folder}...")
+    
+    if sync_options['mode'] == "incremental":
+        # Use persistent folder for incremental syncing
+        run_folder = OUTPUT_DIR / "current"
+        run_folder.mkdir(exist_ok=True)
+        
+        # Create backup if requested
+        if sync_options['backup_on_sync'] and (OUTPUT_DIR / "current").exists():
+            backup_folder = OUTPUT_DIR / f"backup_{timestamp}"
+            import shutil
+            try:
+                shutil.copytree(OUTPUT_DIR / "current", backup_folder)
+                print(f"Created backup: {backup_folder}")
+            except Exception as e:
+                print(f"WARNING: Could not create backup: {e}")
+        
+        print(f"\\n>>> Performing incremental sync in {run_folder}...")
+        
+    else:  # full_overwrite mode
+        run_folder = OUTPUT_DIR / f"data_export_{timestamp}"
+        run_folder.mkdir(exist_ok=True)
+        print(f"\\n>>> Creating full export in {run_folder}...")
 
     # Create a README for the export
     readme_path = run_folder / "README.md"
