@@ -8,4 +8,6 @@ openai # For OpenRouter compatibility using the OpenAI SDK
 psycopg2-binary # Keep if you plan to support PostgreSQL, otherwise remove for pure SQLite 
 anthropic
 pyyaml
-tiktoken 
+tiktoken
+notion-client # For Notion data source
+discord.py # For Discord data source

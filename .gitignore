@@ -28,6 +28,9 @@ env/
 .cache/
 .pytest_cache/
 
+# Processed data
+repo_src/backend/data/processed/
+
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
@@ -187,3 +190,4 @@ docs/prd/last_request.json
 
 repo_src/backend/documents*
 repo_src/backend/transcripts/
+repo_src/backend/data_sources/
