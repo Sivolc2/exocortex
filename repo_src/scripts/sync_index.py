@@ -19,6 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from repo_src.backend.database.connection import get_db
 from repo_src.backend.database.models import IndexEntry
+from repo_src.backend.functions.index_sync import sync_physical_index
 from sqlalchemy import func
 
 def sync_index():
@@ -104,6 +105,22 @@ def sync_index():
             print(f"  {source}: {count} files")
             total += count
         print(f"  Total: {total} files")
+        
+        # Sync to physical index files
+        print(f"\n=== Syncing Physical Index ===")
+        all_entries = db.query(IndexEntry).all()
+        data_dir = PROJECT_ROOT / "repo_src" / "backend" / "data"
+        
+        sync_results = sync_physical_index(all_entries, data_dir)
+        
+        for format_name, success in sync_results.items():
+            status = "✅" if success else "❌"
+            print(f"{status} {format_name.title()} index: {'synced' if success else 'failed'}")
+        
+        if all(sync_results.values()):
+            print("✅ All physical index files synced successfully")
+        else:
+            print("⚠️  Some physical index files failed to sync")
         
         return True
         

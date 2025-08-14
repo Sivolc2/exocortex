@@ -29,6 +29,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from repo_src.backend.database.connection import get_db
 from repo_src.backend.database.models import IndexEntry
+from repo_src.backend.functions.index_sync import sync_physical_index
 from dotenv import load_dotenv
 
 # Load environment variables

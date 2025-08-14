@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from repo_src.backend.database.connection import get_db
 from repo_src.backend.database.models import IndexEntry
 from repo_src.backend.data import schemas
+from repo_src.backend.functions.index_sync import sync_physical_index
 
 router = APIRouter(
     prefix="/api/index",
@@ -42,6 +43,16 @@ def update_index_entry(entry_id: int, entry_update: schemas.IndexEntryUpdate, db
     
     db.commit()
     db.refresh(db_entry)
+    
+    # Sync physical index after update
+    try:
+        all_entries = db.query(IndexEntry).all()
+        data_dir = PROJECT_ROOT / "repo_src" / "backend" / "data"
+        sync_physical_index(all_entries, data_dir)
+    except Exception as e:
+        # Don't fail the request if physical sync fails
+        print(f"Warning: Physical index sync failed after update: {e}")
+    
     return db_entry
 
 @router.post("/scan", status_code=status.HTTP_201_CREATED)
@@ -96,10 +107,20 @@ def scan_and_populate_index(db: Session = Depends(get_db)):
     
     db.commit()
     
+    # Sync physical index after bulk changes
+    try:
+        all_entries = db.query(IndexEntry).all()
+        data_dir = PROJECT_ROOT / "repo_src" / "backend" / "data"
+        sync_results = sync_physical_index(all_entries, data_dir)
+        physical_sync_status = "synced" if all(sync_results.values()) else "partial"
+    except Exception as e:
+        print(f"Warning: Physical index sync failed after scan: {e}")
+        physical_sync_status = "failed"
+    
     message = f"Successfully added {added_count} new files to the index"
     if updated_count > 0:
         message += f" and updated source info for {updated_count} existing files"
-    message += "."
+    message += f". Physical index {physical_sync_status}."
     
     return {"message": message}
 
@@ -166,4 +187,15 @@ async def import_index_from_csv(file: UploadFile = File(...), db: Session = Depe
             created_count += 1
 
     db.commit()
-    return {"message": f"Import complete. Updated: {updated_count}, Created: {created_count}."} 
+    
+    # Sync physical index after import
+    try:
+        all_entries = db.query(IndexEntry).all()
+        data_dir = PROJECT_ROOT / "repo_src" / "backend" / "data"
+        sync_results = sync_physical_index(all_entries, data_dir)
+        physical_sync_status = "synced" if all(sync_results.values()) else "partial"
+    except Exception as e:
+        print(f"Warning: Physical index sync failed after import: {e}")
+        physical_sync_status = "failed"
+    
+    return {"message": f"Import complete. Updated: {updated_count}, Created: {created_count}. Physical index {physical_sync_status}."} 

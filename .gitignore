@@ -191,3 +191,4 @@ docs/prd/last_request.json
 repo_src/backend/documents*
 repo_src/backend/transcripts/
 repo_src/backend/data_sources/
+repo_src/backend/data/index/
