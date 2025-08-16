@@ -27,6 +27,18 @@ Perfect for researchers, teams, content creators, and anyone who wants to build 
 - **CSV Import/Export**: Manage document indexes and metadata
 - **Physical Index Support**: Bridge digital and analog note-taking systems
 
+#### Index Storage
+The knowledge index is stored in a SQLite database (`app_default.db` in project root, configurable via `DATABASE_URL` environment variable). The index contains:
+- **File paths** relative to `repo_src/backend/data/processed/current/`
+- **Source attribution** (obsidian, notion, discord)
+- **Descriptions and tags** (populated by AI tagging system)
+- **Timestamps** for tracking updates
+
+Index management via:
+- **API endpoints**: `/api/index/` for CRUD operations
+- **Sync scripts**: `python -m repo_src.scripts.sync_index` for bulk updates  
+- **Web interface**: Interactive index editor at `/index-editor`
+
 ### 🎙️ **Audio & Recording Features**
 - **Real-time Audio Transcription**: Live speech-to-text with high accuracy
 - **Meeting Recording**: Capture and transcribe conversations automatically

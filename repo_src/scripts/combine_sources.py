@@ -87,13 +87,34 @@ def should_update_file(filepath: Path, content: str) -> bool:
         print(f"    WARNING: Could not read existing file {filepath}: {e}")
         return True  # If we can't read, assume we should update
 
-def write_discord_files(discord_items: list, output_folder: Path):
-    """Write Discord items to daily files organized by channel."""
+def get_date_chunk(date_str: str, chunk_days: int) -> str:
+    """Get the chunk identifier for a given date based on chunk_days."""
+    from datetime import timedelta
+    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+    
+    if chunk_days == 1:
+        return date_str  # Daily chunks
+    
+    # Calculate epoch days since a reference point (e.g., Unix epoch)
+    epoch = datetime(1970, 1, 1)
+    days_since_epoch = (date_obj - epoch).days
+    
+    # Find the chunk start day
+    chunk_start_days = (days_since_epoch // chunk_days) * chunk_days
+    chunk_start = epoch + timedelta(days=chunk_start_days)
+    chunk_end = chunk_start + timedelta(days=chunk_days - 1)
+    
+    # Return a range identifier
+    return f"{chunk_start.strftime('%Y-%m-%d')}_to_{chunk_end.strftime('%Y-%m-%d')}"
+
+def write_discord_files(discord_items: list, output_folder: Path, chunk_days: int = 1):
+    """Write Discord items to files organized by channel, chunked by specified number of days."""
     from collections import defaultdict
     import re
+    from datetime import timedelta
     
-    # Group messages by channel and date
-    channel_date_groups = defaultdict(lambda: defaultdict(list))
+    # Group messages by channel and date chunk
+    channel_chunk_groups = defaultdict(lambda: defaultdict(list))
     
     for item in discord_items:
         # Extract channel info from metadata
@@ -113,14 +134,18 @@ def write_discord_files(discord_items: list, output_folder: Path):
                     date_str = date_sections[i]
                     messages_content = date_sections[i + 1]
                     
+                    # Get the chunk identifier for this date
+                    chunk_id = get_date_chunk(date_str, chunk_days)
+                    
                     # Create a document for this channel-date combination
                     daily_doc = {
                         'channel_name': channel_name,
                         'channel_id': channel_id,
                         'date': date_str,
-                        'content': f"# {channel_name} - {date_str}\n\n{messages_content.strip()}"
+                        'chunk_id': chunk_id,
+                        'content': f"## {date_str}\n\n{messages_content.strip()}"
                     }
-                    channel_date_groups[channel_name][date_str].append(daily_doc)
+                    channel_chunk_groups[channel_name][chunk_id].append(daily_doc)
         else:
             # Fallback: use the fetched_at date if no date sections found
             fetched_date = item.get('metadata', {}).get('fetched_at', '')
@@ -129,26 +154,40 @@ def write_discord_files(discord_items: list, output_folder: Path):
             else:
                 date_str = datetime.now().strftime('%Y-%m-%d')
             
+            chunk_id = get_date_chunk(date_str, chunk_days)
+            
             daily_doc = {
                 'channel_name': channel_name,
                 'channel_id': channel_id,
                 'date': date_str,
+                'chunk_id': chunk_id,
                 'content': content
             }
-            channel_date_groups[channel_name][date_str].append(daily_doc)
+            channel_chunk_groups[channel_name][chunk_id].append(daily_doc)
     
-    # Write files for each channel-date combination
-    for channel_name, date_groups in channel_date_groups.items():
+    # Write files for each channel-chunk combination
+    for channel_name, chunk_groups in channel_chunk_groups.items():
         channel_folder = output_folder / channel_name
         channel_folder.mkdir(exist_ok=True)
         
-        for date_str, docs in date_groups.items():
-            # Combine all documents for this date
-            combined_content = ""
+        for chunk_id, docs in chunk_groups.items():
+            # Sort documents by date within the chunk
+            docs.sort(key=lambda x: x['date'])
+            
+            # Combine all documents for this chunk
+            if chunk_days == 1:
+                # Daily files: use just the date as title
+                combined_content = f"# {channel_name} - {docs[0]['date']}\n\n"
+            else:
+                # Multi-day chunks: use the channel name and date range as title
+                dates = sorted(set(doc['date'] for doc in docs))
+                date_range = f"{dates[0]} to {dates[-1]}" if len(dates) > 1 else dates[0]
+                combined_content = f"# {channel_name} - {date_range}\n\n"
+            
             for doc in docs:
                 combined_content += doc['content'] + "\n\n"
             
-            filename = f"{date_str}.md"
+            filename = f"{chunk_id}.md"
             filepath = channel_folder / filename
             
             # Only write if content has changed
@@ -168,7 +207,11 @@ def write_source_files(items: list, output_folder: Path, source_name: str):
         safe_filename = re.sub(r'[<>:"/\\|?*]', '_', str(item_id))
         safe_filename = safe_filename.replace(' ', '_')[:100]  # Limit length
         
-        filename = f"{safe_filename}.md"
+        # Only add .md extension if not already present (prevents double .md.md)
+        if not safe_filename.endswith('.md'):
+            filename = f"{safe_filename}.md"
+        else:
+            filename = safe_filename
         filepath = output_folder / filename
         
         # Prepare full content with frontmatter
@@ -199,7 +242,11 @@ def write_source_files(items: list, output_folder: Path, source_name: str):
                 print(f"    Unchanged: {filename}")
     
     # Summary
-    updated_count = sum(1 for item in items if should_update_file(output_folder / f"{re.sub(r'[<>:\"/\\\\|?*]', '_', str(item.get('id', 'item')))[:100]}.md", item['content']))
+    def get_filename_for_item(item):
+        safe_filename = re.sub(r'[<>:\"/\\\\|?*]', '_', str(item.get('id', 'item')))[:100]
+        return safe_filename if safe_filename.endswith('.md') else f"{safe_filename}.md"
+    
+    updated_count = sum(1 for item in items if should_update_file(output_folder / get_filename_for_item(item), item['content']))
     unchanged_count = len(items) - updated_count
     
     if len(items) > 5:
@@ -294,8 +341,10 @@ def main():
         print(f"  Processing {len(items)} items from {source_name}...")
         
         if source_name == "discord":
-            # Special handling for Discord: chunk by date and channel
-            write_discord_files(items, source_folder)
+            # Special handling for Discord: chunk by configurable number of days
+            discord_config = data_sources_config.get("discord", {})
+            chunk_days = discord_config.get("chunk_days", 1)  # Default to daily
+            write_discord_files(items, source_folder, chunk_days)
         else:
             # For other sources (Obsidian, Notion): write each item as separate file
             write_source_files(items, source_folder, source_name)

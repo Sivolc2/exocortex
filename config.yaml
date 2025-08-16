@@ -22,7 +22,7 @@ sync_options:
 data_sources:
   obsidian:
     enabled: true
-    vault_path: "repo_src/backend/data/processed/current" # Path relative to project root
+    vault_path: "repo_src/backend/documents" # Path relative to project root
   notion:
     enabled: true # Set to true and fill in details below to enable
     database_id: "244771fe-f76d-8071-898d-e592136fd762" # AIMi database
@@ -36,3 +36,4 @@ data_sources:
       - "discord-ideas"
     message_limit: 10000 # Maximum messages to fetch per channel
     days_back: 60 # How many days back to look for messages (currently unused)
+    chunk_days: 7 # Number of days per file chunk (7 = weekly files, 1 = daily files)

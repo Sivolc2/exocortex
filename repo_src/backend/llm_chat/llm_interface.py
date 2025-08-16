@@ -2,6 +2,8 @@ import os
 from typing import Optional
 from dotenv import load_dotenv
 from openai import OpenAI
+from pathlib import Path
+import yaml
 
 # Load environment variables from the .env file in the backend directory
 load_dotenv()
@@ -12,6 +14,22 @@ DEFAULT_MODEL_NAME = os.getenv("OPENROUTER_MODEL_NAME", "anthropic/claude-3.5-so
 # These are optional but recommended for OpenRouter tracking
 YOUR_SITE_URL = os.getenv("YOUR_SITE_URL", "http://localhost:5173") 
 YOUR_APP_NAME = os.getenv("YOUR_APP_NAME", "AI-Friendly Repo Chat")
+
+def load_config():
+    """Load configuration from config.yaml"""
+    try:
+        # Get the project root directory (4 levels up from llm_interface.py)
+        project_root = Path(__file__).parent.parent.parent.parent
+        config_path = project_root / 'config.yaml'
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                return yaml.safe_load(f)
+    except Exception as e:
+        print(f"Warning: Could not load config.yaml: {e}")
+    return {}
+
+# Load configuration once at module level
+config = load_config()
 
 if not OPENROUTER_API_KEY:
     print("Warning: OPENROUTER_API_KEY not found in .env file. LLM calls will fail.")
@@ -31,6 +49,19 @@ async def ask_llm(prompt_text: str, system_message: str = "You are a helpful ass
         return "Error: OpenRouter client not initialized. Is OPENROUTER_API_KEY set in repo_src/backend/.env?"
     
     model_to_use = model_override or DEFAULT_MODEL_NAME
+    
+    # Determine max_tokens based on whether this is the chat_model (execution model)
+    # Only apply the config max_tokens to the chat_model, not the selector_model
+    config_chat_model = config.get('llm', {}).get('chat_model', '')
+    max_tokens_to_use = 2048  # Default value
+    
+    # Apply config max_tokens only if this is the chat_model (execution model)
+    if model_to_use == config_chat_model:
+        config_max_tokens = config.get('llm', {}).get('max_tokens')
+        if config_max_tokens:
+            max_tokens_to_use = config_max_tokens
+            print(f"Using config max_tokens={max_tokens_to_use} for chat model {model_to_use}")
+    
     try:
         messages = [
             {"role": "system", "content": system_message},
@@ -41,7 +72,7 @@ async def ask_llm(prompt_text: str, system_message: str = "You are a helpful ass
             model=model_to_use,
             messages=messages,
             temperature=0.2, # Lower temperature for more factual answers based on context
-            max_tokens=2048,
+            max_tokens=max_tokens_to_use,
             extra_headers={ "HTTP-Referer": YOUR_SITE_URL, "X-Title": YOUR_APP_NAME }
         )
         

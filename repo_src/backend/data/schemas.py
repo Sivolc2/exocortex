@@ -31,11 +31,18 @@ class ChatRequest(BaseModel):
     prompt: str
     selection_model: Optional[str] = None
     execution_model: Optional[str] = None
+    enabled_sources: Optional[dict] = None
+
+class FileTokenInfo(BaseModel):
+    """Schema for file and its token count."""
+    file_path: str
+    token_count: int
 
 class ChatResponse(BaseModel):
     """Schema for a chat response sent to the frontend."""
     response: str
     selected_files: Optional[List[str]] = None
+    file_token_info: Optional[List[FileTokenInfo]] = None
     total_tokens: Optional[int] = None 
     
 # --- Schemas for Structured Index ---

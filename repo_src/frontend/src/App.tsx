@@ -3,6 +3,11 @@ import './styles/App.css'
 import SettingsModal from './components/SettingsModal'
 import IndexEditor from './components/IndexEditor';
 
+interface FileTokenInfo {
+  file_path: string;
+  token_count: number;
+}
+
 interface Message {
   role: 'user' | 'assistant' | 'tool';
   content: string;
@@ -16,6 +21,12 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptionStatus, setTranscriptionStatus] = useState('');
+
+  // Data source filter states
+  const [enabledSources, setEnabledSources] = useState(() => {
+    const stored = localStorage.getItem('enabledSources');
+    return stored ? JSON.parse(stored) : { discord: true, notion: true, obsidian: true };
+  });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -32,9 +43,14 @@ function App() {
   const [selectionModel, setSelectionModel] = useState(() => localStorage.getItem('selectionModel') || 'anthropic/claude-3-haiku');
   const [executionModel, setExecutionModel] = useState(() => localStorage.getItem('executionModel') || 'anthropic/claude-3.5-sonnet');
 
-  // Persist model choices to localStorage
+  // Persist model choices and data sources to localStorage
   useEffect(() => { localStorage.setItem('selectionModel', selectionModel); }, [selectionModel]);
   useEffect(() => { localStorage.setItem('executionModel', executionModel); }, [executionModel]);
+  useEffect(() => { localStorage.setItem('enabledSources', JSON.stringify(enabledSources)); }, [enabledSources]);
+
+  const handleSourceToggle = (source: 'discord' | 'notion' | 'obsidian') => {
+    setEnabledSources(prev => ({ ...prev, [source]: !prev[source] }));
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -131,6 +147,7 @@ function App() {
           prompt: input,
           selection_model: selectionModel,
           execution_model: executionModel,
+          enabled_sources: enabledSources,
         }),
       });
 
@@ -139,12 +156,23 @@ function App() {
         throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
       }
 
-      const data: { selected_files: string[], response: string, total_tokens?: number } = await response.json();
+      const data: { selected_files: string[], response: string, file_token_info?: FileTokenInfo[], total_tokens?: number } = await response.json();
       
       // Add tool message if files were selected
       if (data.selected_files && data.selected_files.length > 0) {
-        const filesList = data.selected_files.join('\n');
-        const tokenInfo = data.total_tokens ? ` (≈${data.total_tokens.toLocaleString()} tokens)` : '';
+        let filesList: string;
+        
+        if (data.file_token_info && data.file_token_info.length > 0) {
+          // Create a detailed list with individual token counts
+          filesList = data.file_token_info
+            .map(fileInfo => `${fileInfo.file_path} (${fileInfo.token_count.toLocaleString()} tokens)`)
+            .join('\n');
+        } else {
+          // Fallback to simple file list
+          filesList = data.selected_files.join('\n');
+        }
+        
+        const tokenInfo = data.total_tokens ? ` (Total: ${data.total_tokens.toLocaleString()} tokens)` : '';
         const toolMessage: Message = { 
           role: 'tool', 
           content: `Analyzing documents${tokenInfo}:\n\n${filesList}` 
@@ -179,6 +207,32 @@ function App() {
         <div className="view-switcher">
           <button onClick={() => setCurrentView('chat')} className={currentView === 'chat' ? 'active' : ''}>Chat</button>
           <button onClick={() => setCurrentView('index')} className={currentView === 'index' ? 'active' : ''}>Index Editor</button>
+        </div>
+        <div className="data-source-filters">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={enabledSources.discord}
+              onChange={() => handleSourceToggle('discord')}
+            />
+            Discord
+          </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={enabledSources.notion}
+              onChange={() => handleSourceToggle('notion')}
+            />
+            Notion
+          </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={enabledSources.obsidian}
+              onChange={() => handleSourceToggle('obsidian')}
+            />
+            Obsidian
+          </label>
         </div>
         <div className="header-actions">
           <button onClick={handleToggleRecording} className={`record-button ${isRecording ? 'recording' : ''}`}>

@@ -247,6 +247,26 @@ def tag_index(limit: Optional[int] = None, force: bool = False, source_filter: O
         print(f"✅ Updated: {updated} files")
         print(f"❌ Errors: {errors} files")
         
+        # Sync physical index after tagging
+        if updated > 0:
+            print(f"\n=== Syncing Physical Index ===")
+            try:
+                all_entries = db.query(IndexEntry).all()
+                data_dir = PROJECT_ROOT / "repo_src" / "backend" / "data"
+                sync_results = sync_physical_index(all_entries, data_dir)
+                
+                for format_name, success in sync_results.items():
+                    status = "✅" if success else "❌"
+                    print(f"{status} {format_name.title()} index: {'synced' if success else 'failed'}")
+                
+                if all(sync_results.values()):
+                    print("✅ All physical index files synced successfully")
+                else:
+                    print("⚠️  Some physical index files failed to sync")
+                    
+            except Exception as e:
+                print(f"⚠️  Warning: Physical index sync failed: {e}")
+        
         return errors == 0
         
     except KeyboardInterrupt:
