@@ -6,10 +6,10 @@ Your Discord fetcher has been implemented! Here's how to set it up and use it.
 
 Your bot token is already configured in `.env`:
 ```
-DISCORD_BOT_TOKEN="MTQwNTM3OTAzMDcwMTU3NjIwMg.GRXgh4.Eyp6Chqplr3FUh4xxy3s0Idn1gaqQUaaVsvQCU"
+DISCORD_BOT_TOKEN=""
 ```
 
-Application ID: `1405379030701576202`
+Application ID: ``
 
 ## Required Bot Permissions
 
