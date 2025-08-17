@@ -56,8 +56,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             type="number"
             id="max-turns"
             value={maxTurns}
-            onChange={(e) => setMaxTurns(parseInt(e.target.value) || 5)}
-            placeholder="5"
+            onChange={(e) => setMaxTurns(parseInt(e.target.value) || 2)}
+            placeholder="2"
             min="1"
             max="20"
           />

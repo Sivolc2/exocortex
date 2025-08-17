@@ -34,8 +34,6 @@ class TodoStatusResponse(BaseModel):
 class TodoUpdateRequest(BaseModel):
     content: str
 
-class TodoGuideRequest(BaseModel):
-    todo_text: str
 
 class CustomTaskTodoRequest(BaseModel):
     custom_task: str
@@ -209,12 +207,34 @@ async def execute_single_todo(task_id: str, todo: str):
         print(f"workspace_dir is directory: {workspace_dir.is_dir()}")
         print(f"Current files in workspace: {list(workspace_dir.glob('*'))}")
         
+        # First query the MCP to get context for this task
+        print(f"Querying MCP for context on task: {todo}")
+        try:
+            from repo_src.backend.agents.mcp_chat_agent import run_mcp_agent
+            selected_files, context_info, total_tokens, file_token_dict = await run_mcp_agent(
+                db=None,  # We don't need db for this
+                user_prompt=f"Find relevant context and information for this task: {todo}",
+                max_files=5,
+                enabled_sources={"discord": True, "notion": True, "obsidian": True, "chat_exports": True}
+            )
+            print(f"MCP context: found {len(selected_files)} relevant files with {total_tokens} tokens")
+            context_summary = context_info[:1000] if context_info else "No specific context found."
+        except Exception as e:
+            print(f"Warning: Could not get MCP context for task: {e}")
+            context_summary = "No context available - proceeding with task execution."
+            selected_files = []
+        
         prompt = f"""You are a task execution assistant. Your job is to execute this specific task: '{todo}'
+
+CONTEXT FROM KNOWLEDGE BASE:
+{context_summary}
+
+RELEVANT FILES FOUND: {', '.join(selected_files) if selected_files else 'None'}
 
 IMPORTANT: Do NOT generate additional TODO items or task lists. Your goal is to complete this ONE specific task only.
 
 Execute the task by:
-1. Understanding what the task requires
+1. Understanding what the task requires based on the context provided
 2. Taking the necessary actions to complete it (create files, run commands, make changes, etc.)
 3. Confirming the task is done
 4. If the task involves creating files, ALWAYS create them in the current workspace directory
@@ -348,59 +368,3 @@ async def get_all_task_logs():
         }
     }
 
-@router.post("/generate-guide")
-async def generate_implementation_guide(request: TodoGuideRequest, db: Session = Depends(get_db)):
-    """
-    Generate an implementation guide for a specific TODO item using the knowledge chat model.
-    """
-    try:
-        guide_prompt = f"""
-Based on my entire knowledge base, create a comprehensive implementation guide for this task: "{request.todo_text}"
-
-Please provide:
-
-1. **Context & Background**: What this task is about and why it's important
-2. **Prerequisites**: What needs to be in place before starting
-3. **Step-by-Step Implementation**:
-   - Detailed steps with explanations
-   - Code examples where relevant
-   - File locations and structure
-4. **Potential Challenges**: Common issues and how to avoid them
-5. **Testing & Validation**: How to verify the implementation works
-6. **Related Tasks**: Other items that might need to be done in conjunction
-7. **Resources**: Relevant files, documentation, or references from my knowledge base
-
-Format the response in clear markdown with proper headings and code blocks where applicable.
-        """
-
-        # Use the MCP agent to generate the guide (more reliable for knowledge base queries)
-        selected_files, guide_text, total_tokens, file_token_dict = await run_mcp_agent(
-            db=db,
-            user_prompt=guide_prompt,
-            max_files=15,  # Use more files for comprehensive guide
-            enabled_sources={"discord": True, "notion": True, "obsidian": True, "chat_exports": True}
-        )
-
-        # Convert file token dict to list of objects for frontend
-        if file_token_dict:
-            file_token_info = [
-                {"file_path": file_path, "token_count": token_count}
-                for file_path, token_count in file_token_dict.items()
-            ]
-        else:
-            file_token_info = []
-
-        return {
-            "guide": guide_text,
-            "selected_files": selected_files,
-            "file_token_info": file_token_info,
-            "total_tokens": total_tokens,
-            "todo_text": request.todo_text
-        }
-
-    except Exception as e:
-        print(f"Error generating implementation guide: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate implementation guide: {str(e)}"
-        )

@@ -9,8 +9,6 @@ interface TodoItem {
   id: string;
   taskId?: string; // Backend task ID for tracking
   userCompleted: boolean; // User manually marked as completed
-  guide?: string; // Pre-generated implementation guide
-  guideGenerated?: boolean; // Whether guide has been generated
 }
 
 interface FileTokenInfo {
@@ -27,9 +25,6 @@ const TodoView: React.FC = () => {
   const [filesUsed, setFilesUsed] = useState<FileTokenInfo[]>([]);
   const [showFilesUsed, setShowFilesUsed] = useState(false);
   const [totalTokens, setTotalTokens] = useState<number>(0);
-  const [selectedGuideTask, setSelectedGuideTask] = useState<string | null>(null);
-  const [guideData, setGuideData] = useState<any>(null);
-  const [isLoadingGuide, setIsLoadingGuide] = useState(false);
   const [customTodoInput, setCustomTodoInput] = useState('');
   const [isRunningCustomTodo, setIsRunningCustomTodo] = useState(false);
 
@@ -96,57 +91,8 @@ const TodoView: React.FC = () => {
     }
     
     setTodos(todoItems);
-    
-    // Generate guides for all TODOs after parsing
-    generateGuidesForTodos(todoItems);
   };
 
-  const generateGuidesForTodos = async (todoItems: TodoItem[]) => {
-    console.log(`Generating guides for ${todoItems.length} TODO items...`);
-    
-    // Generate guides for each TODO in parallel
-    const guidePromises = todoItems.map(async (todo) => {
-      try {
-        const response = await fetch('/api/todos/generate-guide', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ todo_text: todo.text }),
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          return { todoId: todo.id, guide: data.guide, success: true };
-        } else {
-          console.warn(`Failed to generate guide for: ${todo.text}`);
-          return { todoId: todo.id, guide: null, success: false };
-        }
-      } catch (error) {
-        console.warn(`Error generating guide for "${todo.text}":`, error);
-        return { todoId: todo.id, guide: null, success: false };
-      }
-    });
-
-    // Wait for all guides to complete
-    const guideResults = await Promise.all(guidePromises);
-    
-    // Update TODOs with their guides
-    setTodos(prevTodos => 
-      prevTodos.map(todo => {
-        const guideResult = guideResults.find(result => result.todoId === todo.id);
-        if (guideResult?.success) {
-          return { 
-            ...todo, 
-            guide: guideResult.guide, 
-            guideGenerated: true 
-          };
-        }
-        return { ...todo, guideGenerated: false };
-      })
-    );
-    
-    const successCount = guideResults.filter(r => r.success).length;
-    console.log(`Generated ${successCount}/${todoItems.length} implementation guides`);
-  };
 
   const handleGenerateTodos = async () => {
     setIsLoading(true);
@@ -203,13 +149,21 @@ const TodoView: React.FC = () => {
       (todo.status === 'pending' && !todo.userCompleted) ? { ...todo, status: 'scheduled' as TodoStatus } : todo
     ));
 
-    // Execute each todo individually
+    // Execute each todo individually in parallel (don't wait for completion)
     for (const todo of pendingTodos) {
-      await executeSingleTodo(todo.id, todo.text);
+      // Start execution but don't await - let them run in parallel
+      executeSingleTodo(todo.id, todo.text).catch(error => {
+        console.error(`Error executing todo ${todo.id}:`, error);
+        // The error will be handled by executeSingleTodo internally
+      });
     }
 
-    // Update the exported file with current completion states
-    await updateExportedTodoList();
+    setStatusMessage(`Started execution for ${pendingTodos.length} to-do items. Tasks are running in parallel - check individual status indicators.`);
+    
+    // Update the exported file with current completion states after a short delay
+    setTimeout(async () => {
+      await updateExportedTodoList();
+    }, 1000);
   };
 
   const executeSingleTodo = async (todoId: string, todoText: string) => {
@@ -327,47 +281,6 @@ const TodoView: React.FC = () => {
     setTaskLogs(null);
   };
 
-  const showPreGeneratedGuide = (todo: TodoItem) => {
-    setSelectedGuideTask(todo.text);
-    
-    if (todo.guide && todo.guideGenerated) {
-      // Show the pre-generated guide
-      setGuideData({ guide: todo.guide });
-    } else {
-      // Fallback: generate guide if not available
-      setGuideData(null);
-      setIsLoadingGuide(true);
-      
-      fetch('/api/todos/generate-guide', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ todo_text: todo.text }),
-      })
-      .then(response => response.json())
-      .then(data => {
-        setGuideData(data);
-        // Save the guide to the todo item
-        setTodos(prevTodos => 
-          prevTodos.map(t => 
-            t.id === todo.id ? { ...t, guide: data.guide, guideGenerated: true } : t
-          )
-        );
-      })
-      .catch(error => {
-        setStatusMessage('Failed to generate implementation guide');
-        setSelectedGuideTask(null);
-      })
-      .finally(() => {
-        setIsLoadingGuide(false);
-      });
-    }
-  };
-
-  const closeGuideModal = () => {
-    setSelectedGuideTask(null);
-    setGuideData(null);
-    setIsLoadingGuide(false);
-  };
 
   const runCustomTodo = async () => {
     if (!customTodoInput.trim()) {
@@ -387,9 +300,6 @@ const TodoView: React.FC = () => {
 
     // Add to todos list
     setTodos(prev => [customTodo, ...prev]);
-    
-    // Generate guide for the custom TODO
-    generateGuidesForTodos([customTodo]);
     
     try {
       // Execute the custom task directly (don't generate more TODOs)
@@ -564,14 +474,6 @@ const TodoView: React.FC = () => {
                   <span className="user-completed-badge">User Completed</span>
                 )}
                 <div className="todo-actions">
-                  <button 
-                    className="guide-button"
-                    onClick={() => showPreGeneratedGuide(todo)}
-                    disabled={isLoadingGuide}
-                  >
-                    {isLoadingGuide && selectedGuideTask === todo.text ? 'Generating...' : 
-                     todo.guideGenerated ? 'View Guide' : 'Guide'}
-                  </button>
                   {todo.taskId && (todo.status === 'done' || todo.status === 'error') && (
                     <button 
                       className="log-button"
@@ -632,56 +534,6 @@ const TodoView: React.FC = () => {
         </div>
       )}
 
-      {selectedGuideTask && (
-        <div className="guide-modal" onClick={closeGuideModal}>
-          <div className="guide-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="guide-modal-header">
-              <h3>Implementation Guide</h3>
-              <button className="guide-close-button" onClick={closeGuideModal}>
-                Close
-              </button>
-            </div>
-            
-            <div className="guide-task-title">
-              <strong>Task:</strong> {selectedGuideTask}
-            </div>
-
-            {isLoadingGuide ? (
-              <div className="guide-loading">
-                <div className="loading-spinner"></div>
-                <p>Generating comprehensive implementation guide from your knowledge base...</p>
-              </div>
-            ) : guideData ? (
-              <div className="guide-content">
-                <div className="guide-files-used">
-                  <h4>Knowledge Sources ({guideData.file_token_info?.length || 0} files, {(guideData.total_tokens || 0).toLocaleString()} tokens):</h4>
-                  <div className="guide-files-list">
-                    {guideData.file_token_info?.map((file: FileTokenInfo, index: number) => (
-                      <span key={index} className="guide-file-tag">
-                        {file.file_path.split('/').pop()} ({file.token_count.toLocaleString()})
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="guide-text">
-                  <div dangerouslySetInnerHTML={{ 
-                    __html: guideData.guide
-                      .replace(/\n\n/g, '<br><br>')
-                      .replace(/\n/g, '<br>')
-                      .replace(/## (.*?)(<br>|$)/g, '<h3 class="guide-section-header">$1</h3>')
-                      .replace(/### (.*?)(<br>|$)/g, '<h4 class="guide-subsection-header">$1</h4>')
-                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                      .replace(/`([^`]+)`/g, '<code>$1</code>')
-                      .replace(/- (.*?)(<br>|$)/g, '<li>$1</li>')
-                      .replace(/(\d+)\. (.*?)(<br>|$)/g, '<div class="guide-step"><span class="step-number">$1</span>$2</div>')
-                  }} />
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -47,7 +47,7 @@ function App() {
   // State for models, initialized from localStorage or defaults
   const [selectionModel, setSelectionModel] = useState(() => localStorage.getItem('selectionModel') || 'anthropic/claude-3-haiku');
   const [executionModel, setExecutionModel] = useState(() => localStorage.getItem('executionModel') || 'anthropic/claude-3.5-sonnet');
-  const [maxTurns, setMaxTurns] = useState(() => parseInt(localStorage.getItem('maxTurns') || '5'));
+  const [maxTurns, setMaxTurns] = useState(() => parseInt(localStorage.getItem('maxTurns') || '2'));
 
   // Persist model choices and data sources to localStorage
   useEffect(() => { localStorage.setItem('selectionModel', selectionModel); }, [selectionModel]);
