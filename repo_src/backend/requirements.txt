@@ -11,3 +11,5 @@ pyyaml
 tiktoken
 notion-client # For Notion data source
 discord.py # For Discord data source
+APScheduler # For scheduled data fetching
+mcp[cli] # Model Context Protocol server SDK

@@ -14,6 +14,7 @@
     "dev": "turbo run dev",
     "dev:frontend": "turbo run dev --filter=@workspace/frontend",
     "dev:backend": "turbo run dev --filter=@workspace/backend",
+    "dev:scheduler": "source .venv/bin/activate && python repo_src/backend/scheduler/main.py",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",

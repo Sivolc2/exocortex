@@ -34,6 +34,7 @@ from repo_src.backend.database import models, connection # For example endpoints
 from repo_src.backend.routers.index import router as index_router
 from repo_src.backend.routers.transcribe import router as transcribe_router
 from repo_src.backend.routers.chat import router as chat_router # Import the chat router
+from repo_src.backend.routers.mcp_chat import router as mcp_chat_router # Import the MCP chat router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -61,6 +62,7 @@ app.add_middleware(
 # Include routers
 app.include_router(index_router)
 app.include_router(chat_router)
+app.include_router(mcp_chat_router)
 app.include_router(transcribe_router)
 
 @app.get("/")

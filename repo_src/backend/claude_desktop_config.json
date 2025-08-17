@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "exocortex-knowledge": {
+      "command": "python",
+      "args": [
+        "/Users/starsong/Central/Projects/interactives/exocortex/repo_src/backend/mcp_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/Users/starsong/Central/Projects/interactives/exocortex/repo_src/backend"
+      }
+    }
+  }
+}

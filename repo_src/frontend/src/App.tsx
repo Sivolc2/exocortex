@@ -17,7 +17,7 @@ function App() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null)
-  const [currentView, setCurrentView] = useState<'chat' | 'index'>('chat');
+  const [currentView, setCurrentView] = useState<'chat' | 'knowledge-chat' | 'index'>('chat');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptionStatus, setTranscriptionStatus] = useState('');
@@ -32,9 +32,13 @@ function App() {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<number | null>(null);
   
-  // Move messages state here to persist across views
+  // Separate message states for different chat modes
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: 'Hello! Ask me a question about the documentation in this repository.' }
+  ]);
+  
+  const [knowledgeMessages, setKnowledgeMessages] = useState<Message[]>([
+    { role: 'assistant', content: 'Hello! I can help you explore your personal knowledge base. Ask me about your notes, research, meetings, or any topic covered in your documents.' }
   ]);
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
@@ -58,7 +62,7 @@ function App() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, knowledgeMessages, isLoading]);
 
   const handleToggleRecording = () => {
     setIsRecording(prev => !prev);
@@ -132,19 +136,25 @@ function App() {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
+    const currentMessages = currentView === 'knowledge-chat' ? knowledgeMessages : messages;
+    const setCurrentMessages = currentView === 'knowledge-chat' ? setKnowledgeMessages : setMessages;
+    
+    setCurrentMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/chat', {
+      // Choose API endpoint based on current view
+      const apiEndpoint = currentView === 'knowledge-chat' ? '/api/mcp-chat' : '/api/chat';
+      
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          prompt: input,
+          prompt: userMessage.content,
           selection_model: selectionModel,
           execution_model: executionModel,
           enabled_sources: enabledSources,
@@ -173,20 +183,21 @@ function App() {
         }
         
         const tokenInfo = data.total_tokens ? ` (Total: ${data.total_tokens.toLocaleString()} tokens)` : '';
+        const sourcePrefix = currentView === 'knowledge-chat' ? 'Found in knowledge base' : 'Analyzing documents';
         const toolMessage: Message = { 
           role: 'tool', 
-          content: `Analyzing documents${tokenInfo}:\n\n${filesList}` 
+          content: `${sourcePrefix}${tokenInfo}:\n\n${filesList}` 
         };
-        setMessages(prev => [...prev, toolMessage]);
+        setCurrentMessages(prev => [...prev, toolMessage]);
       }
       const assistantMessage: Message = { role: 'assistant', content: data.response };
-      setMessages(prev => [...prev, assistantMessage]);
+      setCurrentMessages(prev => [...prev, assistantMessage]);
 
     } catch (err: unknown) {
       console.error('Failed to send message:', err);
       setError(err instanceof Error ? err.message : 'Unknown error')
       const errorMessage: Message = { role: 'assistant', content: "Sorry, I encountered an error. Please try again." };
-      setMessages(prev => [...prev, errorMessage]);
+      setCurrentMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -205,7 +216,8 @@ function App() {
       <header className="chat-header">
         <h1>Documentation Chat Agent</h1>
         <div className="view-switcher">
-          <button onClick={() => setCurrentView('chat')} className={currentView === 'chat' ? 'active' : ''}>Chat</button>
+          <button onClick={() => setCurrentView('chat')} className={currentView === 'chat' ? 'active' : ''}>Repository Chat</button>
+          <button onClick={() => setCurrentView('knowledge-chat')} className={currentView === 'knowledge-chat' ? 'active' : ''}>Knowledge Chat</button>
           <button onClick={() => setCurrentView('index')} className={currentView === 'index' ? 'active' : ''}>Index Editor</button>
         </div>
         <div className="data-source-filters">
@@ -242,10 +254,10 @@ function App() {
         </div>
       </header>
 
-      {currentView === 'chat' && (
+      {(currentView === 'chat' || currentView === 'knowledge-chat') && (
         <>
           <div className="messages-container">
-            {messages.map((msg, index) => (
+            {(currentView === 'chat' ? messages : knowledgeMessages).map((msg, index) => (
               <div key={index} className={`message-wrapper ${msg.role}`}>
                 <div className="message-content">
                   <div className="message-role">{msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}</div>
@@ -254,14 +266,31 @@ function App() {
               </div>
             ))}
             {isLoading && (
-              <div className="message-wrapper assistant"><div className="message-content"><div className="message-role">Assistant</div><p className="loading-indicator">Thinking...</p></div></div>
+              <div className="message-wrapper assistant">
+                <div className="message-content">
+                  <div className="message-role">Assistant</div>
+                  <p className="loading-indicator">
+                    {currentView === 'knowledge-chat' ? 'Searching knowledge base...' : 'Thinking...'}
+                  </p>
+                </div>
+              </div>
             )}
             {error && <div className="error-message">Error: {error}</div>}
             <div ref={messagesEndRef} />
           </div>
           <div className="transcription-status">{transcriptionStatus}</div>
           <form onSubmit={handleSubmit} className="chat-input-form">
-            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask a question about the documentation..." aria-label="Chat input" disabled={isLoading} />
+            <input 
+              type="text" 
+              value={input} 
+              onChange={(e) => setInput(e.target.value)} 
+              placeholder={currentView === 'knowledge-chat' ? 
+                "Ask about your notes, research, meetings, or any topics in your knowledge base..." : 
+                "Ask a question about the documentation..."
+              }
+              aria-label="Chat input" 
+              disabled={isLoading} 
+            />
             <button type="submit" disabled={isLoading}>{isLoading ? 'Sending...' : 'Send'}</button>
           </form>
         </>

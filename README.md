@@ -19,6 +19,7 @@ Perfect for researchers, teams, content creators, and anyone who wants to build 
 - **Obsidian Vault Sync**: Automatically syncs with your local Obsidian markdown files
 - **Notion Integration**: Comprehensive traversal of Notion pages with recursive subpage fetching (40+ pages from complex hierarchies)
 - **Discord Chat Archives**: Fetches and formats Discord conversations with rich metadata
+- **Extensible**: Easily add new data sources like Beeper, Ultrahuman, etc.
 - **Unified Data Format**: All sources normalized into consistent markdown-based documents
 
 ### 🔍 **Intelligent Knowledge Management**
@@ -110,10 +111,14 @@ data_sources:
   obsidian:
     enabled: true
     vault_path: "repo_src/backend/documents" # Your Obsidian vault path
+    schedule:
+      frequency: "daily" # Fetch every day
   
   notion:
     enabled: true
     database_id: "your_notion_page_or_database_id"
+    schedule:
+      frequency: "daily"
     
   discord:
     enabled: true
@@ -122,6 +127,14 @@ data_sources:
       - "channel_id_1"
       - "channel_id_2"
     message_limit: 1000
+    schedule:
+      frequency: "hourly" # Fetch every hour
+
+  ultrahuman:
+    enabled: false
+    api_key: "your_ultrahuman_api_key"
+    schedule:
+      frequency: "daily" # Fetch once a day
 ```
 
 Set up your API keys in `repo_src/backend/.env`:
@@ -134,6 +147,9 @@ DISCORD_BOT_TOKEN="your_discord_bot_token"
 
 # Required for AI features
 OPENROUTER_API_KEY="sk-or-v1-..."
+
+# Optional for new data sources
+ULTRAHUMAN_API_KEY="your_key"
 ```
 
 ### Running the System
@@ -145,8 +161,12 @@ pnpm dev:clean            # Reset ports and start dev servers
 pnpm dev:frontend         # Run only frontend (localhost:5173)
 pnpm dev:backend          # Run only backend (localhost:8000)
 
-# Data aggregation
-pnpm data:combine         # Fetch and combine data from all configured sources
+# Data aggregation & Scheduling
+pnpm data:combine         # MANUALLY fetch data from all enabled sources
+pnpm dev:scheduler        # START the automated data fetching scheduler
+
+##  Automated Data Fetching
+The new scheduler runs automatically in the background to keep your data sources synced. See the "Automated Data Fetching" section below for details.
 
 # Obsidian sync utilities
 pnpm obsidian:sync        # One-time sync of Obsidian vault
@@ -199,6 +219,24 @@ See [README.testing.md](README.testing.md) for detailed information about the te
 - **Conversation Context**: Maintains thread structure and reply relationships
 
 ## 📝 Development & AI Integration
+
+### 🔄 Automated Data Fetching
+
+This project includes a built-in scheduler to automatically fetch data from your sources at configurable intervals.
+
+#### How it Works
+1.  **Configuration**: In `config.yaml`, each data source has a `schedule.frequency` setting.
+2.  **Scheduler**: A background process (`pnpm dev:scheduler`) reads this config and schedules jobs.
+3.  **Frequencies**: You can set frequencies like `hourly`, `daily`, `weekly`, or provide a specific [cron expression](https://crontab.guru/).
+
+#### Running the Scheduler
+To start the automated fetching process, run the following command in a separate terminal:
+```bash
+pnpm dev:scheduler
+```
+The scheduler will then run continuously, fetching data from each source according to its configured schedule. Manual fetching with `pnpm data:combine` is still available for on-demand updates.
+
+See `repo_src/backend/scheduler/README.md` for more details.
 
 ### AI-First Architecture
 This repository is designed for effective human-AI collaboration:
