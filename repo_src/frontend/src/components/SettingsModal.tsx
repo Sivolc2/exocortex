@@ -7,6 +7,8 @@ interface SettingsModalProps {
   setSelectionModel: (model: string) => void;
   executionModel: string;
   setExecutionModel: (model: string) => void;
+  maxTurns: number;
+  setMaxTurns: (turns: number) => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -14,7 +16,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   selectionModel,
   setSelectionModel,
   executionModel,
-  setExecutionModel
+  setExecutionModel,
+  maxTurns,
+  setMaxTurns
 }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -44,6 +48,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             placeholder="e.g., anthropic/claude-3.5-sonnet"
           />
           <small>A more powerful model is recommended for generating the final response.</small>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="max-turns">Max Turns</label>
+          <input
+            type="number"
+            id="max-turns"
+            value={maxTurns}
+            onChange={(e) => setMaxTurns(parseInt(e.target.value) || 5)}
+            placeholder="5"
+            min="1"
+            max="20"
+          />
+          <small>Limit the number of agentic turns in non-interactive mode (1-20 turns).</small>
         </div>
 
         <div className="modal-actions">

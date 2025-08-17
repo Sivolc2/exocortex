@@ -316,40 +316,30 @@ const TodoView: React.FC = () => {
 
     setIsRunningCustomTodo(true);
     
+    // Create a new custom todo item
+    const customTodo: TodoItem = {
+      id: `custom-${Date.now()}`,
+      text: customTodoInput.trim(),
+      status: 'pending',
+      userCompleted: false
+    };
+
+    // Add to todos list
+    setTodos(prev => [customTodo, ...prev]);
+    
     try {
-      // Step 1: Generate contextual TODO list for the custom task
-      setStatusMessage(`Analyzing task and generating action items: "${customTodoInput.trim()}"`);
-      
-      const response = await fetch('/api/todos/generate-for-task', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ custom_task: customTodoInput.trim() }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to generate task-specific TODOs');
-      }
-      
-      const data = await response.json();
-      console.log('Custom task response:', data); // Debug log
-      
-      // Parse and add the generated TODOs
-      parseAndSetTodos(data.todos);
-      
-      // Update file information
-      if (data.file_token_info && Array.isArray(data.file_token_info) && data.file_token_info.length > 0) {
-        setFilesUsed(data.file_token_info);
-        setTotalTokens(data.total_tokens || 0);
-        setShowFilesUsed(true);
-      }
+      // Execute the custom task directly (don't generate more TODOs)
+      setStatusMessage(`Executing custom task: "${customTodo.text}"`);
+      await executeSingleTodo(customTodo.id, customTodo.text);
       
       // Clear the input
       setCustomTodoInput('');
-      setStatusMessage(`Generated ${data.file_token_info?.length || 0} file analysis and TODO list for: "${data.custom_task}"`);
+      setStatusMessage(`Custom task "${customTodo.text}" has been queued for execution.`);
       
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to run custom TODO analysis');
+      setStatusMessage(error instanceof Error ? error.message : 'Failed to run custom TODO');
+      // Remove the todo if it failed to start
+      setTodos(prev => prev.filter(t => t.id !== customTodo.id));
     } finally {
       setIsRunningCustomTodo(false);
     }
@@ -438,7 +428,7 @@ const TodoView: React.FC = () => {
           </button>
         </div>
         <div className="custom-todo-help">
-          This will: Analyze relevant files → Generate contextual TODO list → Show implementation steps
+          This will: Execute the custom task directly → Track status → Provide execution logs
         </div>
       </div>
 

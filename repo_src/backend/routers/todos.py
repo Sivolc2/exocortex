@@ -70,7 +70,7 @@ async def generate_todos(db: Session = Depends(get_db)):
         selected_files, response_text, total_tokens, file_token_dict = await run_mcp_agent(
             db=db,
             user_prompt=prompt,
-            max_files=10,  # Use more files for comprehensive TODO search
+            max_files=12,  # Use more files for comprehensive TODO search, prioritizing SoC files
             enabled_sources={"discord": True, "notion": True, "obsidian": True, "chat_exports": True}
         )
 
@@ -200,7 +200,16 @@ async def execute_single_todo(task_id: str, todo: str):
         workspace_dir = PROJECT_ROOT / "workspace"
         workspace_dir.mkdir(exist_ok=True)
         
-        prompt = f"Based on the full context of my knowledge base, please perform the following task: '{todo}'. Use the workspace directory for any file operations or temporary files."
+        prompt = f"""You are a task execution assistant. Your job is to execute this specific task: '{todo}'
+
+IMPORTANT: Do NOT generate additional TODO items or task lists. Your goal is to complete this ONE specific task only.
+
+Execute the task by:
+1. Understanding what the task requires
+2. Taking the necessary actions to complete it (create files, run commands, make changes, etc.)
+3. Confirming the task is done
+
+Use the workspace directory for any file operations or temporary files. Focus only on completing this single task - do not suggest additional work or generate related tasks."""
         command = ["claude", "--dangerously-skip-permissions", "-p", prompt, "--output-format", "json"]
         
         print(f"Executing command: {' '.join(command)} in {workspace_dir}")

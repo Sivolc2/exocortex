@@ -3,8 +3,8 @@
   flex-direction: column;
   height: calc(95vh - 70px);
   padding: 20px;
-  background-color: #242424;
-  color: #f0f0f0;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
   overflow-y: auto;
 }
 
@@ -14,13 +14,13 @@
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .todo-toolbar .status-message {
   flex-grow: 1;
   text-align: left;
-  color: #aaa;
+  color: var(--color-text-secondary);
   min-height: 1.2em;
 }
 
@@ -30,7 +30,7 @@
 }
 
 .todo-toolbar button {
-  background-color: #007bff;
+  background-color: var(--color-accent);
   color: white;
   border: none;
   padding: 10px 15px;
@@ -52,7 +52,7 @@
 }
 
 .todo-list-container {
-  background-color: #2c2c2c;
+  background-color: var(--color-bg);
   padding: 20px;
   border-radius: 8px;
   flex-grow: 1;
@@ -71,7 +71,7 @@
   padding: 15px;
   margin-bottom: 10px;
   border-radius: 8px;
-  background-color: #3a3a3a;
+  background-color: var(--color-bg-secondary);
   transition: background-color 0.3s ease;
 }
 
@@ -122,7 +122,7 @@
 
 .status-text {
   font-size: 10px;
-  color: #aaa;
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   font-weight: bold;
 }
@@ -133,7 +133,7 @@
 }
 
 .execute-single-button {
-  background-color: #007bff;
+  background-color: var(--color-accent);
   color: white;
   border: none;
   padding: 6px 12px;
@@ -199,13 +199,13 @@
 }
 
 .log-modal-content {
-  background-color: #2c2c2c;
+  background-color: var(--color-bg);
   padding: 20px;
   border-radius: 8px;
   max-width: 80%;
   max-height: 80%;
   overflow: auto;
-  color: #f0f0f0;
+  color: var(--color-text-primary);
 }
 
 .log-modal-header {
@@ -213,7 +213,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--color-border);
   padding-bottom: 10px;
 }
 
@@ -232,7 +232,7 @@
 
 .log-section h4 {
   margin: 0 0 10px 0;
-  color: #aaa;
+  color: var(--color-text-secondary);
 }
 
 .log-content {
@@ -247,7 +247,7 @@
 }
 
 .files-used-section {
-  background-color: #3a3a3a;
+  background-color: var(--color-bg-secondary);
   border-radius: 8px;
   margin-bottom: 20px;
   overflow: hidden;
@@ -259,25 +259,25 @@
   align-items: center;
   padding: 15px 20px;
   cursor: pointer;
-  background-color: #404040;
+  background-color: var(--color-bg);
   border-bottom: 1px solid #4a4a4a;
   transition: background-color 0.2s ease;
 }
 
 .files-used-header:hover {
-  background-color: #454545;
+  background-color: var(--color-border);
 }
 
 .files-used-header h3 {
   margin: 0;
-  color: #f0f0f0;
+  color: var(--color-text-primary);
   font-size: 14px;
   font-weight: 600;
 }
 
 .toggle-arrow {
   font-size: 12px;
-  color: #aaa;
+  color: var(--color-text-secondary);
   transition: transform 0.2s ease;
 }
 
@@ -301,7 +301,7 @@
 }
 
 .file-used-item:hover {
-  background-color: #454545;
+  background-color: var(--color-border);
 }
 
 .file-path {
@@ -362,13 +362,13 @@
 }
 
 .guide-modal-content {
-  background-color: #2c2c2c;
+  background-color: var(--color-bg);
   padding: 20px;
   border-radius: 8px;
   max-width: 90%;
   max-height: 90%;
   overflow: auto;
-  color: #f0f0f0;
+  color: var(--color-text-primary);
   width: 800px;
 }
 
@@ -377,7 +377,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--color-border);
   padding-bottom: 10px;
 }
 
@@ -391,11 +391,11 @@
 }
 
 .guide-task-title {
-  background-color: #3a3a3a;
+  background-color: var(--color-bg-secondary);
   padding: 10px 15px;
   border-radius: 6px;
   margin-bottom: 20px;
-  border-left: 4px solid #007bff;
+  border-left: 4px solid var(--color-accent);
 }
 
 .guide-loading {
@@ -405,11 +405,11 @@
 
 .guide-loading p {
   margin-top: 20px;
-  color: #aaa;
+  color: var(--color-text-secondary);
 }
 
 .guide-files-used {
-  background-color: #3a3a3a;
+  background-color: var(--color-bg-secondary);
   padding: 15px;
   border-radius: 6px;
   margin-bottom: 20px;
@@ -417,7 +417,7 @@
 
 .guide-files-used h4 {
   margin: 0 0 10px 0;
-  color: #f0f0f0;
+  color: var(--color-text-primary);
   font-size: 14px;
 }
 
@@ -506,16 +506,16 @@
 }
 
 .custom-todo-section {
-  background-color: #3a3a3a;
+  background-color: var(--color-bg-secondary);
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
-  border-left: 4px solid #007bff;
+  border-left: 4px solid var(--color-accent);
 }
 
 .custom-todo-section h3 {
   margin: 0 0 15px 0;
-  color: #f0f0f0;
+  color: var(--color-text-primary);
   font-size: 16px;
   font-weight: 600;
 }
@@ -528,9 +528,9 @@
 
 .custom-todo-input {
   flex-grow: 1;
-  background-color: #2c2c2c;
-  color: #f0f0f0;
-  border: 1px solid #555;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 10px 15px;
   font-size: 14px;
@@ -538,8 +538,8 @@
 
 .custom-todo-input:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-glow);
 }
 
 .custom-todo-input:disabled {
@@ -548,11 +548,11 @@
 }
 
 .custom-todo-input::placeholder {
-  color: #888;
+  color: var(--color-text-secondary);
 }
 
 .custom-todo-run-button {
-  background-color: #007bff;
+  background-color: var(--color-accent);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -565,7 +565,7 @@
 }
 
 .custom-todo-run-button:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: var(--color-accent-hover);
 }
 
 .custom-todo-run-button:disabled {
@@ -574,7 +574,7 @@
 }
 
 .custom-todo-help {
-  color: #aaa;
+  color: var(--color-text-secondary);
   font-size: 12px;
   font-style: italic;
   margin-top: 5px;
@@ -607,7 +607,7 @@
 
 .placeholder-message {
   text-align: center;
-  color: #aaa;
+  color: var(--color-text-secondary);
   padding: 50px 0;
 }
 
@@ -617,7 +617,7 @@
   width: 50px;
   height: 50px;
   border: 5px solid #444;
-  border-top-color: #007bff;
+  border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }

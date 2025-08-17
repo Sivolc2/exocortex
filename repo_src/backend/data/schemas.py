@@ -32,6 +32,7 @@ class ChatRequest(BaseModel):
     selection_model: Optional[str] = None
     execution_model: Optional[str] = None
     enabled_sources: Optional[dict] = None
+    max_turns: Optional[int] = None
 
 class FileTokenInfo(BaseModel):
     """Schema for file and its token count."""

@@ -44,7 +44,8 @@ async def handle_mcp_chat_request(request: ChatRequest, db: Session = Depends(ge
             search_model=request.selection_model,
             response_model=request.execution_model,
             max_files=5,
-            enabled_sources=request.enabled_sources
+            enabled_sources=request.enabled_sources,
+            max_turns=request.max_turns
         )
         
         # Convert file token counts to FileTokenInfo objects

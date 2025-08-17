@@ -47,10 +47,12 @@ function App() {
   // State for models, initialized from localStorage or defaults
   const [selectionModel, setSelectionModel] = useState(() => localStorage.getItem('selectionModel') || 'anthropic/claude-3-haiku');
   const [executionModel, setExecutionModel] = useState(() => localStorage.getItem('executionModel') || 'anthropic/claude-3.5-sonnet');
+  const [maxTurns, setMaxTurns] = useState(() => parseInt(localStorage.getItem('maxTurns') || '5'));
 
   // Persist model choices and data sources to localStorage
   useEffect(() => { localStorage.setItem('selectionModel', selectionModel); }, [selectionModel]);
   useEffect(() => { localStorage.setItem('executionModel', executionModel); }, [executionModel]);
+  useEffect(() => { localStorage.setItem('maxTurns', maxTurns.toString()); }, [maxTurns]);
   useEffect(() => { localStorage.setItem('enabledSources', JSON.stringify(enabledSources)); }, [enabledSources]);
 
   const handleSourceToggle = (source: 'discord' | 'notion' | 'obsidian' | 'chat_exports') => {
@@ -158,6 +160,7 @@ function App() {
           selection_model: selectionModel,
           execution_model: executionModel,
           enabled_sources: enabledSources,
+          max_turns: maxTurns,
         }),
       });
 
@@ -210,11 +213,12 @@ function App() {
           onClose={() => setIsSettingsOpen(false)}
           selectionModel={selectionModel} setSelectionModel={setSelectionModel}
           executionModel={executionModel} setExecutionModel={setExecutionModel}
+          maxTurns={maxTurns} setMaxTurns={setMaxTurns}
         />
       )}
 
       <header className="chat-header">
-        <h1>Documentation Chat Agent</h1>
+        <h1>Exocortex</h1>
         <div className="view-switcher">
           <button onClick={() => setCurrentView('chat')} className={currentView === 'chat' ? 'active' : ''}>Repository Chat</button>
           <button onClick={() => setCurrentView('knowledge-chat')} className={currentView === 'knowledge-chat' ? 'active' : ''}>Knowledge Chat</button>
@@ -278,9 +282,10 @@ function App() {
               <div className="message-wrapper assistant">
                 <div className="message-content">
                   <div className="message-role">Assistant</div>
-                  <p className="loading-indicator">
-                    {currentView === 'knowledge-chat' ? 'Searching knowledge base...' : 'Thinking...'}
-                  </p>
+                  <div className="loading-indicator">
+                    <span>{currentView === 'knowledge-chat' ? 'QUERYING KNOWLEDGE BASE' : 'ANALYZING'}</span>
+                    <span className="cursor"></span>
+                  </div>
                 </div>
               </div>
             )}

@@ -30,6 +30,34 @@ class MCPChatAgent:
         self.default_search_model = "anthropic/claude-3-haiku"
         self.default_response_model = "anthropic/claude-3.5-sonnet"
     
+    def _find_latest_soc_file(self, search_results: List[Dict[str, Any]]) -> Optional[str]:
+        """Dynamically find the latest SoC file from search results
+        
+        Args:
+            search_results: List of search result entries
+            
+        Returns:
+            File path of the latest SoC file, or None if not found
+        """
+        import re
+        
+        soc_files = []
+        for entry in search_results:
+            file_path = entry.get('file_path', '')
+            if file_path.startswith('SoC -'):
+                # Extract number from SoC files (e.g., "SoC - 07" -> 7, "SoC - 09" -> 9)
+                match = re.search(r'SoC - (\d+)', file_path)
+                if match:
+                    soc_number = int(match.group(1))
+                    soc_files.append((soc_number, file_path))
+        
+        if not soc_files:
+            return None
+        
+        # Sort by number and return the highest (most recent)
+        soc_files.sort(key=lambda x: x[0], reverse=True)
+        return soc_files[0][1]
+    
     def _extract_search_terms(self, user_prompt: str, model: str) -> List[str]:
         """Extract key search terms from user prompt using LLM
         
@@ -102,11 +130,15 @@ Return only the search terms, one per line, without explanations or formatting.
         if enabled_sources:
             enabled_source_names = [source for source, enabled in enabled_sources.items() if enabled]
         
-        # If prioritizing SoC files, add specific SoC search terms
+        # Enhanced search terms for TODO generation - prioritize AIMIbot files
         enhanced_search_terms = search_terms[:]
         if prioritize_soc:
-            soc_terms = ['SoC', 'State of Consciousness', 'SoC - 07', 'Game of Life', 'personal planning', 'journal', 'tasks', 'todo']
-            enhanced_search_terms = soc_terms + search_terms
+            # Add specific high-priority search terms
+            priority_terms = [
+                'AIMIbot', 'AIMibots', 'aimibot', 'aimibots',
+                'personal planning', 'journal', 'tasks', 'todo'
+            ]
+            enhanced_search_terms = priority_terms + search_terms
         
         # Search for each term
         for term in enhanced_search_terms:
@@ -143,6 +175,10 @@ Return only the search terms, one per line, without explanations or formatting.
             # Boost score for entries with tags
             if tags:
                 score += 1
+            
+            # Heavy boost for AIMIbot-related files (current active project)
+            if file_path and any(term in file_path.lower() for term in ['aimibot', 'aimibots']):
+                score += 25  # Very high priority for AIMIbot project files
             
             # Boost score if search term appears in description or tags
             search_term = entry.get('search_term', '').lower()
@@ -181,6 +217,11 @@ Return only the search terms, one per line, without explanations or formatting.
                 summary += f" [Tags: {entry['tags'][:100]}]"
             file_summaries.append(summary)
         
+        # Check if this is a TODO/task-related request
+        is_todo_request = any(keyword in user_prompt.lower() for keyword in [
+            'todo', 'to-do', 'task', 'actionable', 'action item', 'checklist', 'planning'
+        ])
+        
         selection_prompt = f"""
 You are helping select the most relevant files from a personal knowledge base to answer a user's question.
 
@@ -194,6 +235,8 @@ Select the {max_files} most relevant files that would best help answer the user'
 2. Complementary information that provides context
 3. Diversity of sources and perspectives
 4. Quality of descriptions and tags
+
+{f"PRIORITIZATION FOR TODO GENERATION: HEAVILY favor AIMIbot project files (current active project) - these should dominate the selection" if is_todo_request else ""}
 
 Respond with only the numbers of the selected files (e.g., "1, 3, 7, 12, 15"), nothing else.
 """
@@ -351,7 +394,8 @@ async def run_mcp_agent(
     search_model: Optional[str] = None,
     response_model: Optional[str] = None,
     max_files: int = 5,
-    enabled_sources: Optional[Dict[str, bool]] = None
+    enabled_sources: Optional[Dict[str, bool]] = None,
+    max_turns: Optional[int] = None
 ) -> Tuple[List[str], str, int, Dict[str, int]]:
     """
     Run the MCP-powered chat agent
@@ -363,6 +407,7 @@ async def run_mcp_agent(
         response_model: Model to use for final response generation
         max_files: Maximum number of files to include as context
         enabled_sources: Dictionary of sources to enable/disable filtering
+        max_turns: Maximum number of agentic turns (currently not used - for future enhancement)
         
     Returns:
         Tuple of (selected_files, response_text, total_tokens, file_token_counts)
@@ -381,7 +426,11 @@ async def run_mcp_agent(
         
         # Step 2: Search knowledge base
         print("Searching knowledge base...")
-        search_results = await agent._search_knowledge_base(search_terms, enabled_sources)
+        # Check if this is a TODO generation request - prioritize SoC and AIMIbot files
+        is_todo_request = any(keyword in user_prompt.lower() for keyword in [
+            'todo', 'to-do', 'task', 'actionable', 'action item', 'checklist', 'soc', 'planning'
+        ])
+        search_results = await agent._search_knowledge_base(search_terms, enabled_sources, prioritize_soc=is_todo_request)
         print(f"Found {len(search_results)} potential files")
         
         # Step 3: Select most relevant files
@@ -480,7 +529,8 @@ Each task should be concrete and implementable.
         
         # Step 2: Search knowledge base with task-specific terms
         print("Searching knowledge base for task-related files...")
-        search_results = await agent._search_knowledge_base(search_terms, enabled_sources)
+        # Search without artificial SoC prioritization
+        search_results = await agent._search_knowledge_base(search_terms, enabled_sources, prioritize_soc=False)
         print(f"Found {len(search_results)} potential files")
         
         # Step 3: Select most relevant files for the task
