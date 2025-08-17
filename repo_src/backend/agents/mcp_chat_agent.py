@@ -83,11 +83,13 @@ Return only the search terms, one per line, without explanations or formatting.
             keywords = [word for word in words if len(word) > 3 and word not in stopwords]
             return keywords[:3]
     
-    async def _search_knowledge_base(self, search_terms: List[str]) -> List[Dict[str, Any]]:
+    async def _search_knowledge_base(self, search_terms: List[str], enabled_sources: Optional[Dict[str, bool]] = None, prioritize_soc: bool = False) -> List[Dict[str, Any]]:
         """Search knowledge base using multiple terms and combine results
         
         Args:
             search_terms: List of terms to search for
+            enabled_sources: Dictionary of sources to enable/disable filtering
+            prioritize_soc: Whether to prioritize SoC (State of Consciousness) files
             
         Returns:
             Combined and deduplicated search results
@@ -95,13 +97,30 @@ Return only the search terms, one per line, without explanations or formatting.
         all_results = []
         seen_files = set()
         
+        # Get list of enabled sources
+        enabled_source_names = None
+        if enabled_sources:
+            enabled_source_names = [source for source, enabled in enabled_sources.items() if enabled]
+        
+        # If prioritizing SoC files, add specific SoC search terms
+        enhanced_search_terms = search_terms[:]
+        if prioritize_soc:
+            soc_terms = ['SoC', 'State of Consciousness', 'SoC - 07', 'Game of Life', 'personal planning', 'journal', 'tasks', 'todo']
+            enhanced_search_terms = soc_terms + search_terms
+        
         # Search for each term
-        for term in search_terms:
+        for term in enhanced_search_terms:
             try:
                 search_result = await self.mcp_client.search_knowledge(term, limit=15)
                 
                 for entry in search_result.entries:
                     file_path = entry.get('file_path')
+                    source = entry.get('source')
+                    
+                    # Filter by enabled sources if specified
+                    if enabled_source_names and source not in enabled_source_names:
+                        continue
+                        
                     if file_path and file_path not in seen_files:
                         seen_files.add(file_path)
                         entry['search_term'] = term  # Track which term found this
@@ -251,7 +270,48 @@ Respond with only the numbers of the selected files (e.g., "1, 3, 7, 12, 15"), n
         
         context_text = "\n".join(context_parts)
         
-        response_prompt = f"""
+        # Detect if this is a TODO generation request
+        is_todo_request = any(keyword in user_prompt.lower() for keyword in [
+            'todo', 'to-do', 'task', 'actionable', 'action item', 'checklist'
+        ])
+        
+        if is_todo_request:
+            response_prompt = f"""
+You are an AI assistant that analyzes personal knowledge bases to extract actionable TODO items.
+
+Analyze the provided context from the user's knowledge base and extract specific, actionable tasks. Focus on:
+
+1. **TODO comments** in code files
+2. **Action items** mentioned in meeting notes  
+3. **Incomplete features** mentioned in documentation
+4. **Bug reports** or issues that need fixing
+5. **Project plans** with pending items
+6. **FIXME or TODO markers** in code
+7. **Features mentioned** as 'coming soon' or 'planned'
+8. **Configuration or setup tasks** mentioned but not completed
+9. **Missing documentation** that needs writing
+10. **Code improvements** or refactoring needs
+
+Context from knowledge base:
+{context_text}
+
+User's Request: {user_prompt}
+
+Generate a clean, actionable TODO list. Each item should:
+- Start with "- [ ]" (checkbox format)
+- Be specific and actionable
+- Include relevant file paths when applicable
+- Focus on concrete development tasks
+
+Return ONLY the TODO items in this exact format:
+- [ ] Task description here
+- [ ] Another task description
+- [ ] Yet another specific task
+
+Do not include explanations, headers, or other text - only the checkbox-formatted TODO items.
+"""
+        else:
+            response_prompt = f"""
 You are an AI assistant helping to answer questions based on the user's personal knowledge base. The knowledge base contains their notes, research, meeting summaries, and other documents.
 
 Use the provided context to give a comprehensive, helpful answer to the user's question. Key guidelines:
@@ -290,7 +350,8 @@ async def run_mcp_agent(
     user_prompt: str,
     search_model: Optional[str] = None,
     response_model: Optional[str] = None,
-    max_files: int = 5
+    max_files: int = 5,
+    enabled_sources: Optional[Dict[str, bool]] = None
 ) -> Tuple[List[str], str, int, Dict[str, int]]:
     """
     Run the MCP-powered chat agent
@@ -301,6 +362,7 @@ async def run_mcp_agent(
         search_model: Model to use for search term extraction and file selection
         response_model: Model to use for final response generation
         max_files: Maximum number of files to include as context
+        enabled_sources: Dictionary of sources to enable/disable filtering
         
     Returns:
         Tuple of (selected_files, response_text, total_tokens, file_token_counts)
@@ -319,7 +381,7 @@ async def run_mcp_agent(
         
         # Step 2: Search knowledge base
         print("Searching knowledge base...")
-        search_results = await agent._search_knowledge_base(search_terms)
+        search_results = await agent._search_knowledge_base(search_terms, enabled_sources)
         print(f"Found {len(search_results)} potential files")
         
         # Step 3: Select most relevant files
@@ -349,4 +411,103 @@ async def run_mcp_agent(
     except Exception as e:
         print(f"Error in MCP agent: {e}")
         error_msg = f"I encountered an error while searching your knowledge base: {str(e)}"
+        return [], error_msg, 0, {}
+
+
+async def run_mcp_agent_for_custom_task(
+    db: Session,
+    custom_task: str,
+    search_model: Optional[str] = None,
+    response_model: Optional[str] = None,
+    max_files: int = 8,
+    enabled_sources: Optional[Dict[str, bool]] = None
+) -> Tuple[List[str], str, int, Dict[str, int]]:
+    """
+    Run the MCP-powered chat agent specifically for custom task TODO generation
+    
+    Args:
+        db: Database session (kept for compatibility)
+        custom_task: The specific task to find related files and generate TODOs for
+        search_model: Model to use for search term extraction and file selection
+        response_model: Model to use for final response generation
+        max_files: Maximum number of files to include as context
+        enabled_sources: Dictionary of sources to enable/disable filtering
+        
+    Returns:
+        Tuple of (selected_files, response_text, total_tokens, file_token_counts)
+    """
+    agent = MCPChatAgent()
+    
+    # Use provided models or defaults
+    search_model = search_model or agent.default_search_model
+    response_model = response_model or agent.default_response_model
+    
+    try:
+        # Create a task-specific prompt for better file selection
+        task_analysis_prompt = f"""
+Based on this specific task: "{custom_task}"
+
+I need you to analyze my project files, code, documentation, and notes to create a comprehensive TODO list for implementing this task.
+
+Focus on finding files related to:
+- The main subject/technology mentioned in the task
+- Similar existing implementations or features
+- Configuration files that might need updates
+- Documentation that should be referenced or updated
+- Test files that might need modifications
+- Dependencies or related modules
+
+Look for actionable items like:
+- Code that needs to be written or modified
+- Configuration changes required
+- Documentation updates needed
+- Tests that need to be created or updated
+- Dependencies that need to be installed
+- Files that need to be created or refactored
+
+Generate specific, actionable TODO items in this exact format:
+- [ ] Specific actionable task description
+- [ ] Another specific task
+- [ ] Yet another task with file paths when relevant
+
+Each task should be concrete and implementable.
+"""
+        
+        # Step 1: Extract search terms from task
+        print(f"Extracting search terms from custom task: {custom_task}")
+        search_terms = agent._extract_search_terms(custom_task, search_model)
+        print(f"Search terms: {search_terms}")
+        
+        # Step 2: Search knowledge base with task-specific terms
+        print("Searching knowledge base for task-related files...")
+        search_results = await agent._search_knowledge_base(search_terms, enabled_sources)
+        print(f"Found {len(search_results)} potential files")
+        
+        # Step 3: Select most relevant files for the task
+        print("Selecting most relevant files for custom task...")
+        selected_files = agent._select_most_relevant_files(search_results, task_analysis_prompt, search_model, max_files)
+        print(f"Selected files: {selected_files}")
+        
+        # Step 4: Load file contents
+        print("Loading file contents...")
+        file_contents = await agent._load_file_contents(selected_files)
+        
+        # Step 5: Generate task-specific TODO list
+        print("Generating task-specific TODO list...")
+        response_text = agent._generate_response(task_analysis_prompt, file_contents, response_model)
+        
+        # Calculate approximate token counts (simplified)
+        total_chars = sum(len(content) for content in file_contents.values())
+        total_tokens = total_chars // 4  # Rough approximation
+        
+        file_token_counts = {
+            file_path: len(content) // 4
+            for file_path, content in file_contents.items()
+        }
+        
+        return selected_files, response_text, total_tokens, file_token_counts
+        
+    except Exception as e:
+        print(f"Error in MCP agent for custom task: {e}")
+        error_msg = f"I encountered an error while analyzing your task: {str(e)}"
         return [], error_msg, 0, {}

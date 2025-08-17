@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react';
 import './styles/App.css'
 import SettingsModal from './components/SettingsModal'
 import IndexEditor from './components/IndexEditor';
+import TodoView from './components/TodoView';
 
 interface FileTokenInfo {
   file_path: string;
@@ -17,7 +18,7 @@ function App() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null)
-  const [currentView, setCurrentView] = useState<'chat' | 'knowledge-chat' | 'index'>('chat');
+  const [currentView, setCurrentView] = useState<'chat' | 'knowledge-chat' | 'index' | 'todo'>('chat');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptionStatus, setTranscriptionStatus] = useState('');
@@ -25,7 +26,7 @@ function App() {
   // Data source filter states
   const [enabledSources, setEnabledSources] = useState(() => {
     const stored = localStorage.getItem('enabledSources');
-    return stored ? JSON.parse(stored) : { discord: true, notion: true, obsidian: true };
+    return stored ? JSON.parse(stored) : { discord: true, notion: true, obsidian: true, chat_exports: true };
   });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -52,8 +53,8 @@ function App() {
   useEffect(() => { localStorage.setItem('executionModel', executionModel); }, [executionModel]);
   useEffect(() => { localStorage.setItem('enabledSources', JSON.stringify(enabledSources)); }, [enabledSources]);
 
-  const handleSourceToggle = (source: 'discord' | 'notion' | 'obsidian') => {
-    setEnabledSources(prev => ({ ...prev, [source]: !prev[source] }));
+  const handleSourceToggle = (source: 'discord' | 'notion' | 'obsidian' | 'chat_exports') => {
+    setEnabledSources((prev: any) => ({ ...prev, [source]: !prev[source] }));
   };
 
   const scrollToBottom = () => {
@@ -136,7 +137,6 @@ function App() {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = { role: 'user', content: input };
-    const currentMessages = currentView === 'knowledge-chat' ? knowledgeMessages : messages;
     const setCurrentMessages = currentView === 'knowledge-chat' ? setKnowledgeMessages : setMessages;
     
     setCurrentMessages(prev => [...prev, userMessage]);
@@ -219,6 +219,7 @@ function App() {
           <button onClick={() => setCurrentView('chat')} className={currentView === 'chat' ? 'active' : ''}>Repository Chat</button>
           <button onClick={() => setCurrentView('knowledge-chat')} className={currentView === 'knowledge-chat' ? 'active' : ''}>Knowledge Chat</button>
           <button onClick={() => setCurrentView('index')} className={currentView === 'index' ? 'active' : ''}>Index Editor</button>
+          <button onClick={() => setCurrentView('todo')} className={currentView === 'todo' ? 'active' : ''}>To-Do</button>
         </div>
         <div className="data-source-filters">
           <label className="checkbox-label">
@@ -244,6 +245,14 @@ function App() {
               onChange={() => handleSourceToggle('obsidian')}
             />
             Obsidian
+          </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={enabledSources.chat_exports}
+              onChange={() => handleSourceToggle('chat_exports')}
+            />
+            Messages
           </label>
         </div>
         <div className="header-actions">
@@ -298,6 +307,10 @@ function App() {
 
       {currentView === 'index' && (
         <IndexEditor />
+      )}
+
+      {currentView === 'todo' && (
+        <TodoView />
       )}
     </div>
   );

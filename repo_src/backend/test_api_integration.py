@@ -19,7 +19,8 @@ def test_mcp_chat_api():
         "enabled_sources": {
             "discord": True,
             "notion": True,
-            "obsidian": True
+            "obsidian": True,
+            "chat_exports": True
         }
     }
     

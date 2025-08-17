@@ -67,7 +67,7 @@ def scan_and_populate_index(db: Session = Depends(get_db)):
     existing_files = {entry.file_path for entry in db.query(IndexEntry.file_path).all()}
     
     found_files = {}  # filepath -> source mapping
-    source_dirs = ["obsidian", "notion", "discord"]
+    source_dirs = ["obsidian", "notion", "discord", "chat_exports"]
     
     for source in source_dirs:
         source_dir = CONSOLIDATED_DATA_DIR / source

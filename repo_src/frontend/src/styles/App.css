@@ -14,36 +14,40 @@
 .chat-header {
   background-color: #3a3a3a;
   padding: 20px;
-  text-align: center;
   border-bottom: 1px solid #444;
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
   gap: 1rem;
+  min-height: 60px;
 }
 
 .chat-header h1 {
   margin: 0;
-  font-size: 1.2em; /* Smaller to fit switcher */
+  font-size: 1.2em;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .view-switcher {
-  flex-grow: 1;
-  justify-content: center;
   display: flex;
   background-color: #2c2c2c;
   border-radius: 8px;
   padding: 4px;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .view-switcher button {
-  padding: 8px 16px;
+  padding: 8px 12px;
   border-radius: 6px;
   background-color: transparent;
   border: none;
   color: #ccc;
   cursor: pointer;
+  font-size: 0.9em;
+  white-space: nowrap;
+  flex-shrink: 1;
 }
 
 .view-switcher button.active {
@@ -54,10 +58,12 @@
 .data-source-filters {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 8px 12px;
+  gap: 12px;
+  padding: 6px 10px;
   background-color: #2c2c2c;
   border-radius: 8px;
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .checkbox-label {
@@ -84,6 +90,43 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-shrink: 0;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .chat-header {
+    padding: 15px;
+    gap: 0.8rem;
+  }
+  
+  .chat-header h1 {
+    font-size: 1.1em;
+  }
+  
+  .view-switcher button {
+    padding: 6px 10px;
+    font-size: 0.85em;
+  }
+  
+  .data-source-filters {
+    gap: 8px;
+    padding: 4px 8px;
+  }
+  
+  .checkbox-label {
+    font-size: 0.85em;
+    gap: 4px;
+  }
+  
+  .header-actions {
+    gap: 8px;
+  }
+  
+  .settings-button, .record-button {
+    padding: 6px 10px;
+    font-size: 0.85em;
+  }
 }
 
 .settings-button {

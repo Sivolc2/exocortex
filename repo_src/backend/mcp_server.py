@@ -54,7 +54,17 @@ def load_knowledge_index() -> List[IndexEntry]:
 
 def get_file_content(file_path: str) -> str:
     """Get content of a processed file"""
-    full_path = PROCESSED_ROOT / file_path
+    # Check if this is an obsidian file that needs path translation
+    if not file_path.startswith(('obsidian/', 'notion/', 'discord/', 'chat_exports/')):
+        # Add obsidian prefix for bare filenames from the knowledge index
+        if file_path.endswith('.md'):
+            # Transform spaces to underscores and other characters for obsidian file naming
+            transformed_file_path = file_path.replace(' ', '_').replace('(', '_').replace(')', '_').replace('/', '_')
+            full_path = PROCESSED_ROOT / "obsidian" / transformed_file_path
+        else:
+            full_path = PROCESSED_ROOT / file_path
+    else:
+        full_path = PROCESSED_ROOT / file_path
     
     # Security check: ensure file is within allowed directory
     try:
@@ -66,6 +76,25 @@ def get_file_content(file_path: str) -> str:
     
     try:
         return full_path.read_text(encoding='utf-8')
+    except FileNotFoundError:
+        # If the direct path doesn't work, try finding the file with different naming conventions
+        if file_path.endswith('.md') and not file_path.startswith(('obsidian/', 'notion/', 'discord/', 'chat_exports/')):
+            # Try alternative transformations for obsidian files
+            alternatives = [
+                file_path.replace(' ', '_'),  # Simple space to underscore
+                file_path.replace(' - ', '_-_'),  # Specific pattern transformation
+                file_path.replace(' ', '_').replace('(', '_(').replace(')', ')_'),  # More specific transformations
+            ]
+            
+            for alt_path in alternatives:
+                try:
+                    alt_full_path = PROCESSED_ROOT / "obsidian" / alt_path
+                    if alt_full_path.exists():
+                        return alt_full_path.read_text(encoding='utf-8')
+                except Exception:
+                    continue
+        
+        raise FileNotFoundError(f"Could not read file {file_path}: File not found")
     except Exception as e:
         raise FileNotFoundError(f"Could not read file {file_path}: {e}")
 
