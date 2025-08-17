@@ -7,6 +7,7 @@ and provides contextualized responses based on the user's personal knowledge bas
 
 import os
 import openai
+from datetime import datetime
 from typing import List, Dict, Any, Tuple, Optional
 from sqlalchemy.orm import Session
 
@@ -29,6 +30,10 @@ class MCPChatAgent:
         # Default models
         self.default_search_model = "anthropic/claude-3-haiku"
         self.default_response_model = "anthropic/claude-3.5-sonnet"
+    
+    def _get_current_datetime(self) -> str:
+        """Get the current date and time formatted for system prompts"""
+        return datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
     
     def _find_latest_soc_file(self, search_results: List[Dict[str, Any]]) -> Optional[str]:
         """Dynamically find the latest SoC file from search results
@@ -68,7 +73,10 @@ class MCPChatAgent:
         Returns:
             List of search terms to use for MCP queries
         """
+        current_datetime = self._get_current_datetime()
         extraction_prompt = f"""
+Current date and time: {current_datetime}
+
 Analyze this user query and extract 2-4 key search terms that would be most effective for finding relevant information in a knowledge base containing personal notes, research, meeting notes, and documents.
 
 Focus on:
@@ -222,7 +230,10 @@ Return only the search terms, one per line, without explanations or formatting.
             'todo', 'to-do', 'task', 'actionable', 'action item', 'checklist', 'planning'
         ])
         
+        current_datetime = self._get_current_datetime()
         selection_prompt = f"""
+Current date and time: {current_datetime}
+
 You are helping select the most relevant files from a personal knowledge base to answer a user's question.
 
 User's Question: "{user_prompt}"
@@ -318,8 +329,12 @@ Respond with only the numbers of the selected files (e.g., "1, 3, 7, 12, 15"), n
             'todo', 'to-do', 'task', 'actionable', 'action item', 'checklist'
         ])
         
+        current_datetime = self._get_current_datetime()
+        
         if is_todo_request:
             response_prompt = f"""
+Current date and time: {current_datetime}
+
 You are an AI assistant that analyzes personal knowledge bases to extract actionable TODO items.
 
 Analyze the provided context from the user's knowledge base and extract specific, actionable tasks. Focus on:
@@ -355,6 +370,8 @@ Do not include explanations, headers, or other text - only the checkbox-formatte
 """
         else:
             response_prompt = f"""
+Current date and time: {current_datetime}
+
 You are an AI assistant helping to answer questions based on the user's personal knowledge base. The knowledge base contains their notes, research, meeting summaries, and other documents.
 
 Use the provided context to give a comprehensive, helpful answer to the user's question. Key guidelines:
@@ -492,8 +509,12 @@ async def run_mcp_agent_for_custom_task(
     response_model = response_model or agent.default_response_model
     
     try:
+        current_datetime = agent._get_current_datetime()
+        
         # Create a task-specific prompt for better file selection
         task_analysis_prompt = f"""
+Current date and time: {current_datetime}
+
 Based on this specific task: "{custom_task}"
 
 I need you to analyze my project files, code, documentation, and notes to create a comprehensive TODO list for implementing this task.

@@ -1,6 +1,7 @@
 import os
 import json
 from pathlib import Path
+from datetime import datetime
 from typing import List, Tuple, Optional, Any, Dict
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,10 @@ from repo_src.backend.database.models import IndexEntry
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
 DOCUMENTS_DIR = PROJECT_ROOT / "repo_src" / "backend" / "data" / "processed" / "current"
+
+def _get_current_datetime() -> str:
+    """Get the current date and time formatted for system prompts"""
+    return datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
 
 def _estimate_token_count(text: str) -> int:
     """
@@ -116,7 +121,10 @@ async def select_relevant_files(user_prompt: str, file_tree: str, db: Session, m
     Returns:
         A list of file paths relative to the documents directory.
     """
-    system_message = """
+    current_datetime = _get_current_datetime()
+    system_message = f"""
+Current date and time: {current_datetime}
+
 You are an expert software engineer assistant. Your task is to analyze a user's request and identify the most relevant files from the documents directory to fulfill the request.
 
 You are provided with three pieces of information:
@@ -190,7 +198,8 @@ async def execute_request_with_context(user_prompt: str, files_content: str, mod
     """
     Uses an LLM to generate a final response based on the user prompt and the content of selected files.
     """
-    system_message = "You are an expert software engineer and senior technical writer. Your task is to fulfill the user's request based on their prompt and the content of relevant documentation files provided below. Provide a comprehensive, clear, and helpful response. Use markdown for formatting where appropriate."
+    current_datetime = _get_current_datetime()
+    system_message = f"Current date and time: {current_datetime}\n\nYou are an expert software engineer and senior technical writer. Your task is to fulfill the user's request based on their prompt and the content of relevant documentation files provided below. Provide a comprehensive, clear, and helpful response. Use markdown for formatting where appropriate."
     
     full_prompt = f"## Relevant Documentation File(s) Content ##\n{files_content}\n\n## User Request ##\n{user_prompt}"
     

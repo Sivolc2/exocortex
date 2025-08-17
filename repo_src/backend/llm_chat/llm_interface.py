@@ -3,6 +3,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from openai import OpenAI
 from pathlib import Path
+from datetime import datetime
 import yaml
 
 # Load environment variables from the .env file in the backend directory
@@ -31,6 +32,10 @@ def load_config():
 # Load configuration once at module level
 config = load_config()
 
+def _get_current_datetime() -> str:
+    """Get the current date and time formatted for system prompts"""
+    return datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
+
 if not OPENROUTER_API_KEY:
     print("Warning: OPENROUTER_API_KEY not found in .env file. LLM calls will fail.")
 
@@ -49,6 +54,11 @@ async def ask_llm(prompt_text: str, system_message: str = "You are a helpful ass
         return "Error: OpenRouter client not initialized. Is OPENROUTER_API_KEY set in repo_src/backend/.env?"
     
     model_to_use = model_override or DEFAULT_MODEL_NAME
+    
+    # Add current date/time to system message if not already present
+    if "Current date and time:" not in system_message:
+        current_datetime = _get_current_datetime()
+        system_message = f"Current date and time: {current_datetime}\n\n{system_message}"
     
     # Determine max_tokens based on whether this is the chat_model (execution model)
     # Only apply the config max_tokens to the chat_model, not the selector_model

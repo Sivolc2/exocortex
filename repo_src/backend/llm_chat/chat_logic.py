@@ -1,7 +1,12 @@
 import os
 import glob
 from pathlib import Path
+from datetime import datetime
 from .llm_interface import ask_llm
+
+def _get_current_datetime() -> str:
+    """Get the current date and time formatted for system prompts"""
+    return datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
 
 def load_documents_from_disk() -> str:
     """
@@ -38,8 +43,9 @@ async def process_chat_request(user_prompt: str) -> str:
     constructing a prompt, and querying the LLM.
     """
     documents_context = load_documents_from_disk()
+    current_datetime = _get_current_datetime()
 
-    system_message = "You are a helpful assistant. You answer questions based on the provided context documents. If the answer is not in the documents, say that you cannot find the answer in the provided context."
+    system_message = f"Current date and time: {current_datetime}\n\nYou are a helpful assistant. You answer questions based on the provided context documents. If the answer is not in the documents, say that you cannot find the answer in the provided context."
 
     # Construct the final prompt for the LLM
     full_prompt = f"Here is the context from my documents:\n\n{documents_context}\n\nBased on this context, please answer the following question:\n\nUser Question: {user_prompt}"

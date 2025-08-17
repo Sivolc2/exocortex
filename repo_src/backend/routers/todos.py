@@ -47,23 +47,24 @@ async def generate_todos(db: Session = Depends(get_db)):
     """
     try:
         prompt = (
-            "I need you to analyze my project files, meeting notes, project plans, documentation, and personal memos to find actionable tasks. "
-            "PRIORITIZE recent personal planning documents, especially files starting with 'SoC -' (State of Consciousness), with SoC - 07 being the most recent and important. "
+            "I need you to analyze my personal documents, journal entries, and project files to find actionable everyday tasks. "
+            "PRIORITIZE personal life management and daily tasks from recent planning documents, especially files starting with 'SoC -' (State of Consciousness). "
             "Look for:\n"
-            "- TODO comments and checkboxes in personal planning documents\n"
-            "- Action items mentioned in meeting notes\n"
-            "- Incomplete features mentioned in documentation\n"
-            "- Bug reports or issues that need fixing\n"
-            "- Project plans with pending items\n"
-            "- Code that has FIXME or TODO markers\n"
-            "- Features mentioned as 'coming soon' or 'planned'\n"
-            "- Configuration or setup tasks mentioned but not completed\n"
-            "- Personal tasks and next steps from recent journal entries\n"
-            "- Business and project development actions from strategy documents\n\n"
-            "Focus especially on unchecked items from the latest SoC document and personal planning files. "
+            "- Personal TODO items and unchecked tasks in journal entries\n"
+            "- Daily life management tasks (appointments, errands, personal admin)\n"
+            "- Household and personal maintenance items\n"
+            "- Social commitments and relationship tasks\n"
+            "- Health, fitness, and self-care actions\n"
+            "- Financial and administrative tasks\n"
+            "- Personal project next steps\n"
+            "- Travel and event planning items\n"
+            "- Shopping lists and purchase decisions\n"
+            "- Some selected AIMIbot project development tasks (but not the majority)\n\n"
+            "Focus especially on everyday practical tasks that help with life management and personal productivity. "
+            "Include a few strategic AIMIbot project tasks, but prioritize personal daily life items. "
             "Extract all these actionable items and create a clean markdown checklist. "
             "Each item should start with '- [ ]' and be specific and actionable. "
-            "Prioritize: 1) Personal tasks from recent SoC files, 2) Business/project development, 3) Technical tasks and code improvements."
+            "Prioritize: 1) Personal daily life tasks, 2) Personal admin and maintenance, 3) Select AIMIbot project items, 4) Other technical tasks."
         )
 
         # Use the MCP agent to process the request (more reliable for TODO generation)
@@ -190,8 +191,10 @@ async def execute_todos(request: TodoExecutionRequest):
 async def execute_single_todo(task_id: str, todo: str):
     """Execute a single todo item and track its status."""
     try:
+        print(f"Starting execution for task {task_id}: '{todo}'")
         # Mark as in progress
         running_tasks[task_id]["status"] = "in_progress"
+        print(f"Marked task {task_id} as in_progress")
         
         # Set working directory to the project workspace
         import os
@@ -199,6 +202,12 @@ async def execute_single_todo(task_id: str, todo: str):
         PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
         workspace_dir = PROJECT_ROOT / "workspace"
         workspace_dir.mkdir(exist_ok=True)
+        
+        print(f"PROJECT_ROOT: {PROJECT_ROOT}")
+        print(f"workspace_dir: {workspace_dir}")
+        print(f"workspace_dir exists: {workspace_dir.exists()}")
+        print(f"workspace_dir is directory: {workspace_dir.is_dir()}")
+        print(f"Current files in workspace: {list(workspace_dir.glob('*'))}")
         
         prompt = f"""You are a task execution assistant. Your job is to execute this specific task: '{todo}'
 
@@ -208,8 +217,15 @@ Execute the task by:
 1. Understanding what the task requires
 2. Taking the necessary actions to complete it (create files, run commands, make changes, etc.)
 3. Confirming the task is done
+4. If the task involves creating files, ALWAYS create them in the current workspace directory
 
-Use the workspace directory for any file operations or temporary files. Focus only on completing this single task - do not suggest additional work or generate related tasks."""
+Current workspace directory: {workspace_dir}
+
+Use the workspace directory for any file operations or temporary files. Focus only on completing this single task - do not suggest additional work or generate related tasks.
+
+If this is a personal task (like making appointments, shopping, contacting people), create a simple text file documenting what was done or what needs to be done next.
+
+ALWAYS create at least one file in the workspace directory to show that the task was attempted, even if it's just a status file like 'task_progress.txt' or 'task_notes.txt'."""
         command = ["claude", "--dangerously-skip-permissions", "-p", prompt, "--output-format", "json"]
         
         print(f"Executing command: {' '.join(command)} in {workspace_dir}")
@@ -223,8 +239,25 @@ Use the workspace directory for any file operations or temporary files. Focus on
         running_tasks[task_id]["process"] = process
         print(f"Started task '{todo}' with PID: {process.pid}")
         
-        # Wait for completion
-        stdout, stderr = await process.communicate()
+        # Wait for completion with timeout
+        print(f"Waiting for Claude CLI process to complete for task {task_id}...")
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=300)  # 5 minute timeout
+        except asyncio.TimeoutError:
+            print(f"Task {task_id} timed out after 5 minutes, killing process")
+            process.kill()
+            running_tasks[task_id]["status"] = "error"
+            task_outputs[task_id] = {
+                "stdout": "",
+                "stderr": "Task timed out after 5 minutes",
+                "return_code": -1
+            }
+            return
+        
+        print(f"Claude CLI process completed for task {task_id} with return code {process.returncode}")
+        print(f"STDOUT: {stdout.decode('utf-8') if stdout else 'No stdout'}")
+        print(f"STDERR: {stderr.decode('utf-8') if stderr else 'No stderr'}")
+        print(f"Files in workspace after execution: {list(workspace_dir.glob('*'))}")
         
         # Store the output
         task_outputs[task_id] = {
@@ -242,6 +275,8 @@ Use the workspace directory for any file operations or temporary files. Focus on
             
     except Exception as e:
         print(f"Error executing task '{todo}': {e}")
+        import traceback
+        traceback.print_exc()
         running_tasks[task_id]["status"] = "error"
         task_outputs[task_id] = {
             "stdout": "",

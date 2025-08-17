@@ -94,6 +94,41 @@ def get_file_content(file_path: str) -> str:
                 except Exception:
                     continue
         
+        # Handle Discord file reorganization - daily files consolidated into weekly files
+        elif file_path.startswith('discord/'):
+            # Try to find the content in consolidated weekly files
+            if '/2025-' in file_path:
+                # Extract date from path like discord/aimibot-channel/2025-06-23.md
+                import re
+                from datetime import datetime, timedelta
+                
+                date_match = re.search(r'(\d{4}-\d{2}-\d{2})\.md$', file_path)
+                if date_match:
+                    date_str = date_match.group(1)
+                    try:
+                        target_date = datetime.strptime(date_str, '%Y-%m-%d')
+                        
+                        # Find the Monday of the week containing this date
+                        monday = target_date - timedelta(days=target_date.weekday())
+                        
+                        # Find the Sunday of the same week
+                        sunday = monday + timedelta(days=6)
+                        
+                        # Create the weekly file name pattern
+                        week_filename = f"{monday.strftime('%Y-%m-%d')}_to_{sunday.strftime('%Y-%m-%d')}.md"
+                        
+                        # Try different possible locations for the weekly file
+                        potential_paths = [
+                            PROCESSED_ROOT / file_path.replace(date_str + '.md', week_filename),
+                            PROCESSED_ROOT / "chat_exports" / f"week_{monday.strftime('%Y-%m-%d')}.md",
+                        ]
+                        
+                        for potential_path in potential_paths:
+                            if potential_path.exists():
+                                return potential_path.read_text(encoding='utf-8')
+                    except ValueError:
+                        pass  # Invalid date format, continue with other fallbacks
+        
         raise FileNotFoundError(f"Could not read file {file_path}: File not found")
     except Exception as e:
         raise FileNotFoundError(f"Could not read file {file_path}: {e}")

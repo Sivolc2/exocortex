@@ -9,6 +9,8 @@ interface TodoItem {
   id: string;
   taskId?: string; // Backend task ID for tracking
   userCompleted: boolean; // User manually marked as completed
+  guide?: string; // Pre-generated implementation guide
+  guideGenerated?: boolean; // Whether guide has been generated
 }
 
 interface FileTokenInfo {
@@ -94,6 +96,56 @@ const TodoView: React.FC = () => {
     }
     
     setTodos(todoItems);
+    
+    // Generate guides for all TODOs after parsing
+    generateGuidesForTodos(todoItems);
+  };
+
+  const generateGuidesForTodos = async (todoItems: TodoItem[]) => {
+    console.log(`Generating guides for ${todoItems.length} TODO items...`);
+    
+    // Generate guides for each TODO in parallel
+    const guidePromises = todoItems.map(async (todo) => {
+      try {
+        const response = await fetch('/api/todos/generate-guide', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ todo_text: todo.text }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          return { todoId: todo.id, guide: data.guide, success: true };
+        } else {
+          console.warn(`Failed to generate guide for: ${todo.text}`);
+          return { todoId: todo.id, guide: null, success: false };
+        }
+      } catch (error) {
+        console.warn(`Error generating guide for "${todo.text}":`, error);
+        return { todoId: todo.id, guide: null, success: false };
+      }
+    });
+
+    // Wait for all guides to complete
+    const guideResults = await Promise.all(guidePromises);
+    
+    // Update TODOs with their guides
+    setTodos(prevTodos => 
+      prevTodos.map(todo => {
+        const guideResult = guideResults.find(result => result.todoId === todo.id);
+        if (guideResult?.success) {
+          return { 
+            ...todo, 
+            guide: guideResult.guide, 
+            guideGenerated: true 
+          };
+        }
+        return { ...todo, guideGenerated: false };
+      })
+    );
+    
+    const successCount = guideResults.filter(r => r.success).length;
+    console.log(`Generated ${successCount}/${todoItems.length} implementation guides`);
   };
 
   const handleGenerateTodos = async () => {
@@ -275,30 +327,39 @@ const TodoView: React.FC = () => {
     setTaskLogs(null);
   };
 
-  const generateImplementationGuide = async (todoText: string) => {
-    setIsLoadingGuide(true);
-    setSelectedGuideTask(todoText);
-    setGuideData(null);
+  const showPreGeneratedGuide = (todo: TodoItem) => {
+    setSelectedGuideTask(todo.text);
     
-    try {
-      const response = await fetch('/api/todos/generate-guide', {
+    if (todo.guide && todo.guideGenerated) {
+      // Show the pre-generated guide
+      setGuideData({ guide: todo.guide });
+    } else {
+      // Fallback: generate guide if not available
+      setGuideData(null);
+      setIsLoadingGuide(true);
+      
+      fetch('/api/todos/generate-guide', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ todo_text: todoText }),
+        body: JSON.stringify({ todo_text: todo.text }),
+      })
+      .then(response => response.json())
+      .then(data => {
+        setGuideData(data);
+        // Save the guide to the todo item
+        setTodos(prevTodos => 
+          prevTodos.map(t => 
+            t.id === todo.id ? { ...t, guide: data.guide, guideGenerated: true } : t
+          )
+        );
+      })
+      .catch(error => {
+        setStatusMessage('Failed to generate implementation guide');
+        setSelectedGuideTask(null);
+      })
+      .finally(() => {
+        setIsLoadingGuide(false);
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to generate implementation guide');
-      }
-      
-      const data = await response.json();
-      setGuideData(data);
-    } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to generate implementation guide');
-      setSelectedGuideTask(null);
-    } finally {
-      setIsLoadingGuide(false);
     }
   };
 
@@ -326,6 +387,9 @@ const TodoView: React.FC = () => {
 
     // Add to todos list
     setTodos(prev => [customTodo, ...prev]);
+    
+    // Generate guide for the custom TODO
+    generateGuidesForTodos([customTodo]);
     
     try {
       // Execute the custom task directly (don't generate more TODOs)
@@ -502,10 +566,11 @@ const TodoView: React.FC = () => {
                 <div className="todo-actions">
                   <button 
                     className="guide-button"
-                    onClick={() => generateImplementationGuide(todo.text)}
+                    onClick={() => showPreGeneratedGuide(todo)}
                     disabled={isLoadingGuide}
                   >
-                    {isLoadingGuide && selectedGuideTask === todo.text ? 'Generating...' : 'Guide'}
+                    {isLoadingGuide && selectedGuideTask === todo.text ? 'Generating...' : 
+                     todo.guideGenerated ? 'View Guide' : 'Guide'}
                   </button>
                   {todo.taskId && (todo.status === 'done' || todo.status === 'error') && (
                     <button 
