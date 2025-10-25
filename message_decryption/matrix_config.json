@@ -1,0 +1,12 @@
+{
+  "homeserver": "https://matrix.beeper.com",
+  "username": "YOUR_USERNAME",
+  "access_token": "YOUR_ACCESS_TOKEN",
+  "recovery_key": "YOUR_RECOVERY_KEY",
+  "output_directory": "matrix_exports",
+  "schedule": {
+    "frequency": "daily",
+    "time": "02:00"
+  },
+  "max_backups": 30
+}

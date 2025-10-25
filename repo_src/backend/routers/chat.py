@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 
 from repo_src.backend.data.schemas import ChatRequest, ChatResponse, FileTokenInfo
-# from repo_src.backend.llm_chat.chat_logic import process_chat_request # Old logic
 from repo_src.backend.agents.file_selection_agent import run_agent
 from repo_src.backend.database.connection import get_db
 
@@ -18,7 +17,7 @@ async def handle_chat_request(request: ChatRequest, db: Session = Depends(get_db
     and returns the response.
     """
     try:
-        # Use the new agent-based logic
+        # Use the file selection agent for local repository files
         selected_files, response_text, total_tokens, file_token_counts = await run_agent(
             db=db,
             user_prompt=request.prompt, 
