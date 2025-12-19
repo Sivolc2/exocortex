@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Sync Obsidian vault to documents folder
-# Usage: ./sync-obsidian.sh /path/to/obsidian/vault [subfolder]
+# Simple sync Obsidian vault to documents folder (no backup)
+# Usage: ./sync-obsidian-simple.sh /path/to/obsidian/vault [subfolder]
 
 set -e
 
 OBSIDIAN_PATH="$1"
 SUBFOLDER="$2"
-DOCUMENTS_DIR="$(dirname "$0")/../backend/documents"
+DOCUMENTS_DIR="$(dirname "$0")/../../datalake/documents"
 
 if [ -z "$OBSIDIAN_PATH" ]; then
     echo "Usage: $0 /path/to/obsidian/vault [subfolder]"
@@ -32,14 +32,12 @@ fi
 
 echo "Syncing from $SOURCE_PATH to $DOCUMENTS_DIR"
 
-# Create backup if documents folder exists
-if [ -d "$DOCUMENTS_DIR" ]; then
-    echo "Backing up current documents folder..."
-    mv "$DOCUMENTS_DIR" "${DOCUMENTS_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
-fi
-
-# Create documents directory
+# Create documents directory if it doesn't exist
 mkdir -p "$DOCUMENTS_DIR"
+
+# Remove existing markdown files first
+echo "Cleaning existing markdown files..."
+find "$DOCUMENTS_DIR" -name "*.md" -type f -delete 2>/dev/null || true
 
 # Copy markdown files
 echo "Copying markdown files..."

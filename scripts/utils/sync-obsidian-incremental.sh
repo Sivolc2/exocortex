@@ -7,7 +7,7 @@ set -e
 
 OBSIDIAN_PATH="$1"
 SUBFOLDER="$2"
-DOCUMENTS_DIR="$(dirname "$0")/../backend/documents"
+DOCUMENTS_DIR="$(dirname "$0")/../../datalake/documents"
 
 if [ -z "$OBSIDIAN_PATH" ]; then
     echo "Usage: $0 /path/to/obsidian/vault [subfolder]"

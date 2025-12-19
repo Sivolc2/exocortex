@@ -1,4 +1,4 @@
-vault_path: "repo_src/backend/data/processed/current" # Relative to project root
+vault_path: "datalake/processed/current" # Relative to project root
 llm:
   selector_model: "anthropic/claude-sonnet-4"
   chat_model: "google/gemini-2.5-flash"
@@ -22,7 +22,7 @@ sync_options:
 data_sources:
   obsidian:
     enabled: true
-    vault_path: "repo_src/backend/documents" # Path relative to project root
+    vault_path: "datalake/documents" # Path relative to project root
     schedule:
       frequency: "daily" # Options: hourly, daily, weekly, or a cron string like "0 2 * * *"
   notion:

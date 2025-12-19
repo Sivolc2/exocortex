@@ -15,7 +15,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
 sys.path.insert(0, str(PROJECT_ROOT))
 
 CONFIG_PATH = PROJECT_ROOT / "config.yaml"
-OUTPUT_DIR = PROJECT_ROOT / "repo_src" / "backend" / "data" / "processed"
+OUTPUT_DIR = PROJECT_ROOT / "datalake" / "processed"
 
 # --- Helper Functions ---
 
@@ -177,7 +177,8 @@ def run_source_fetch_pipeline(source_name: str, sync_options: dict):
 
     # After processing, sync the index
     try:
-        from repo_src.scripts.sync_index import sync_index
+        sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "utils"))
+        from sync_index import sync_index
         print(f"\n--- Syncing index after {source_name} update ---")
         sync_index()
     except Exception as e:

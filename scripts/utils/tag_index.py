@@ -38,7 +38,7 @@ load_dotenv(PROJECT_ROOT / "repo_src" / "backend" / ".env")
 def get_file_content(file_path: str) -> Optional[str]:
     """Read the content of a file."""
     try:
-        CONSOLIDATED_DATA_DIR = PROJECT_ROOT / "repo_src" / "backend" / "data" / "processed" / "current"
+        CONSOLIDATED_DATA_DIR = PROJECT_ROOT / "datalake" / "processed" / "current"
         full_path = CONSOLIDATED_DATA_DIR / file_path
         
         if not full_path.exists():

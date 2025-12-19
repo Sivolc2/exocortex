@@ -161,41 +161,46 @@ def generate_csv_index(entries: List[IndexEntry]) -> str:
     return output.getvalue()
 
 
-def get_index_file_paths(data_dir: Path) -> Dict[str, Path]:
+def get_index_file_paths(data_dir: Path = None) -> Dict[str, Path]:
     """
     Get the file paths where physical indexes should be stored.
-    
+
     Args:
-        data_dir: Path to the backend data directory
-        
+        data_dir: Path to the backend data directory (deprecated, uses datalake/index if None)
+
     Returns:
         Dictionary mapping format names to file paths
     """
-    index_dir = data_dir / "index"
+    # Use datalake/index directory at project root
+    if data_dir is None:
+        project_root = Path(__file__).resolve().parents[3]
+        index_dir = project_root / "datalake" / "index"
+    else:
+        index_dir = data_dir / "index"
     index_dir.mkdir(exist_ok=True)
-    
+
     return {
         "markdown": index_dir / "knowledge_index.md",
-        "json": index_dir / "knowledge_index.json", 
+        "json": index_dir / "knowledge_index.json",
         "csv": index_dir / "knowledge_index.csv",
     }
 
 
-def sync_physical_index(entries: List[IndexEntry], data_dir: Path, formats: Optional[List[str]] = None) -> Dict[str, bool]:
+def sync_physical_index(entries: List[IndexEntry], data_dir: Path = None, formats: Optional[List[str]] = None) -> Dict[str, bool]:
     """
     Sync database entries to physical index files.
-    
+
     Args:
         entries: List of IndexEntry instances from database
-        data_dir: Path to the backend data directory
+        data_dir: Path to the backend data directory (deprecated, uses datalake if None)
         formats: List of formats to generate (default: ["markdown", "json", "csv"])
-        
+
     Returns:
         Dictionary mapping format names to success status
     """
     if formats is None:
         formats = ["markdown", "json", "csv"]
-    
+
     file_paths = get_index_file_paths(data_dir)
     results = {}
     
@@ -228,14 +233,14 @@ def sync_physical_index(entries: List[IndexEntry], data_dir: Path, formats: Opti
     return results
 
 
-def validate_physical_index_consistency(entries: List[IndexEntry], data_dir: Path) -> Dict[str, Any]:
+def validate_physical_index_consistency(entries: List[IndexEntry], data_dir: Path = None) -> Dict[str, Any]:
     """
     Validate that physical index files are consistent with database entries.
-    
+
     Args:
         entries: List of IndexEntry instances from database
-        data_dir: Path to the backend data directory
-        
+        data_dir: Path to the backend data directory (deprecated, uses datalake if None)
+
     Returns:
         Dictionary with validation results
     """

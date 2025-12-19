@@ -5,9 +5,9 @@ import os
 from pathlib import Path
 
 # Use absolute path for database to ensure consistent location regardless of startup directory
-# Database will be stored in repo_src/backend/data/ directory
-BACKEND_DIR = Path(__file__).parent.parent  # Get backend directory
-DATA_DIR = BACKEND_DIR / "data"
+# Database will be stored in datalake/ directory (project root)
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent  # Get project root (3 levels up from backend/database/)
+DATA_DIR = PROJECT_ROOT / "datalake"
 DATA_DIR.mkdir(exist_ok=True)  # Create data directory if it doesn't exist
 
 # Default database location

@@ -29,7 +29,7 @@ def sync_index():
     print("=== Index Sync Script ===")
     
     # Point to the consolidated data from all sources
-    CONSOLIDATED_DATA_DIR = PROJECT_ROOT / "repo_src" / "backend" / "data" / "processed" / "current"
+    CONSOLIDATED_DATA_DIR = PROJECT_ROOT / "datalake" / "processed" / "current"
     
     if not CONSOLIDATED_DATA_DIR.exists():
         print(f"ERROR: Consolidated data directory not found at {CONSOLIDATED_DATA_DIR}")

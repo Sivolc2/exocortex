@@ -23,7 +23,8 @@ from mcp.server.stdio import stdio_server
 from pydantic import BaseModel
 
 # Data paths
-DATA_ROOT = Path(__file__).parent / "data"
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+DATA_ROOT = PROJECT_ROOT / "datalake"
 PROCESSED_ROOT = DATA_ROOT / "processed" / "current"
 INDEX_ROOT = DATA_ROOT / "index"
 KNOWLEDGE_INDEX_JSON = INDEX_ROOT / "knowledge_index.json"
