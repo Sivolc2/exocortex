@@ -66,6 +66,34 @@ class IndexEntryResponse(IndexEntryBase):
     id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    
+
+    class Config:
+        from_attributes = True
+
+# --- Schemas for People Tracking ---
+
+class PersonBase(BaseModel):
+    name: str
+    external_link: Optional[str] = None
+    contact_info: Optional[str] = None
+    unstructured_context: Optional[str] = None
+
+class PersonCreate(PersonBase):
+    """Schema for creating a new person entry"""
+    pass
+
+class PersonUpdate(BaseModel):
+    """Schema for updating an existing person entry"""
+    name: Optional[str] = None
+    external_link: Optional[str] = None
+    contact_info: Optional[str] = None
+    unstructured_context: Optional[str] = None
+
+class PersonResponse(PersonBase):
+    """Schema for returning person data in responses"""
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
     class Config:
         from_attributes = True 

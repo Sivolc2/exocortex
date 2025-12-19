@@ -2,10 +2,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import StaticPool
 import os
+from pathlib import Path
 
-# Default to an in-memory SQLite database if DATABASE_URL is not set,
-# good for quick starts or some test scenarios outside of full test suite.
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app_default.db")
+# Use absolute path for database to ensure consistent location regardless of startup directory
+# Database will be stored in repo_src/backend/data/ directory
+BACKEND_DIR = Path(__file__).parent.parent  # Get backend directory
+DATA_DIR = BACKEND_DIR / "data"
+DATA_DIR.mkdir(exist_ok=True)  # Create data directory if it doesn't exist
+
+# Default database location
+DEFAULT_DB_PATH = DATA_DIR / "exocortex.db"
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}")
 
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):

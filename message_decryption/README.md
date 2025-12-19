@@ -84,3 +84,7 @@ This approach bypasses Element's export limitations by:
 - `python3 schedule_matrix_export.py --run-once` (single export)
 - `python3 schedule_matrix_export.py` (continuous scheduling)
 - `python3 setup_launchd.py` (setup macOS automation)
+
+<!-- Set up element IO
+Point at beeper backend
+Use matrix_config.json with creds from element io/beeper to pull messages -->

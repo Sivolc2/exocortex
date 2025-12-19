@@ -21,7 +21,20 @@ class IndexEntry(Base):
     source = Column(String, index=True, nullable=False, default="unknown")  # obsidian, notion, discord
     description = Column(String, nullable=True)
     tags = Column(String, nullable=True) # Simple comma-separated tags
-    
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+class Person(Base):
+    __tablename__ = "people"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String, index=True, nullable=False)
+    external_link = Column(String, nullable=True)  # URL or reference to external profile
+    contact_info = Column(String, nullable=True)  # Phone, email, social handles, etc.
+    unstructured_context = Column(String, nullable=True)  # Free-form notes and context
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now()) 
