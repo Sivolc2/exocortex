@@ -13,3 +13,6 @@ notion-client # For Notion data source
 discord.py # For Discord data source
 APScheduler # For scheduled data fetching
 mcp[cli] # Model Context Protocol server SDK
+google-auth-oauthlib # For Gmail OAuth authentication
+google-auth-httplib2 # For Gmail API HTTP support
+google-api-python-client # For Gmail API

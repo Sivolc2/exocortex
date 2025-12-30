@@ -41,7 +41,10 @@
     "obsidian:sync-incremental": "./scripts/utils/sync-obsidian-incremental.sh",
     "obsidian:watch": "./scripts/utils/watch-obsidian.sh",
     "obsidian:watch-smart": "./scripts/utils/watch-obsidian-smart.sh",
-    "obsidian:link": "echo 'Usage: ln -s /path/to/your/obsidian/vault datalake/documents' && echo 'Replace current: mv datalake/documents datalake/documents_backup && ln -s /path/to/your/obsidian/vault datalake/documents'"
+    "obsidian:link": "echo 'Usage: ln -s /path/to/your/obsidian/vault datalake/documents' && echo 'Replace current: mv datalake/documents datalake/documents_backup && ln -s /path/to/your/obsidian/vault datalake/documents'",
+    "messages:sync": "cd scripts/message_decryption && python -m matrix_aggregator.main matrix_config.json",
+    "messages:sync-schedule": "cd scripts/message_decryption && python -m matrix_aggregator.main matrix_config.json --schedule",
+    "messages:test": "cd scripts/message_decryption && python test_connection.py"
   },
   "keywords": [],
   "author": "",

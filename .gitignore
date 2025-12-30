@@ -194,3 +194,4 @@ docs/prd/last_request.json
 
 # Backend transcripts (if generated)
 repo_src/backend/transcripts/
+datalake
