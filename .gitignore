@@ -1,6 +1,8 @@
 # --- Global ---
 workspace/
-datalake/
+# Ignore datalake contents but keep structure
+datalake/**/*
+!datalake/**/.gitkeep
 .DS_Store
 .env
 .env.*
