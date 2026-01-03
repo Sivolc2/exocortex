@@ -93,6 +93,17 @@ def scan_and_populate_index(db: Session = Depends(get_db)):
                 updated_count += 1
 
     if not new_files and updated_count == 0:
+        # Even if no changes, ensure physical index files exist
+        try:
+            all_entries = db.query(IndexEntry).all()
+            data_dir = PROJECT_ROOT / "repo_src" / "backend" / "data"
+            file_paths = data_dir / "index"
+            # Check if index files exist
+            if not (file_paths / "knowledge_index.json").exists():
+                sync_physical_index(all_entries, data_dir)
+                return {"message": "Index is already up to date. Physical index files created."}
+        except Exception as e:
+            print(f"Warning: Physical index sync failed: {e}")
         return {"message": "Index is already up to date. No new files found and all sources are current."}
 
     for file_path in sorted(list(new_files)):

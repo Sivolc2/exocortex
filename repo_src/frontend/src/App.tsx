@@ -3,6 +3,7 @@ import './styles/App.css'
 import SettingsModal from './components/SettingsModal'
 import IndexEditor from './components/IndexEditor';
 import TodoView from './components/TodoView';
+import DashboardView from './components/DashboardView';
 
 interface FileTokenInfo {
   file_path: string;
@@ -18,7 +19,7 @@ function App() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null)
-  const [currentView, setCurrentView] = useState<'chat' | 'knowledge-chat' | 'index' | 'todo'>('chat');
+  const [currentView, setCurrentView] = useState<'chat' | 'knowledge-chat' | 'index' | 'todo' | 'dashboard'>('chat');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptionStatus, setTranscriptionStatus] = useState('');
@@ -148,7 +149,7 @@ function App() {
 
     try {
       // Choose API endpoint based on current view
-      const apiEndpoint = currentView === 'knowledge-chat' ? '/api/mcp-chat' : '/api/chat';
+      const apiEndpoint = currentView === 'knowledge-chat' ? '/api/mcp-chat/' : '/api/chat/';
       
       const response = await fetch(apiEndpoint, {
         method: 'POST',
@@ -224,6 +225,7 @@ function App() {
           <button onClick={() => setCurrentView('knowledge-chat')} className={currentView === 'knowledge-chat' ? 'active' : ''}>Knowledge Chat</button>
           <button onClick={() => setCurrentView('index')} className={currentView === 'index' ? 'active' : ''}>Index Editor</button>
           <button onClick={() => setCurrentView('todo')} className={currentView === 'todo' ? 'active' : ''}>To-Do</button>
+          <button onClick={() => setCurrentView('dashboard')} className={currentView === 'dashboard' ? 'active' : ''}>Dashboard</button>
         </div>
         <div className="data-source-filters">
           <label className="checkbox-label">
@@ -316,6 +318,10 @@ function App() {
 
       {currentView === 'todo' && (
         <TodoView />
+      )}
+
+      {currentView === 'dashboard' && (
+        <DashboardView />
       )}
     </div>
   );

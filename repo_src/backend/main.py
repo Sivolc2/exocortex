@@ -36,6 +36,8 @@ from repo_src.backend.routers.transcribe import router as transcribe_router
 from repo_src.backend.routers.chat import router as chat_router # Import the chat router
 from repo_src.backend.routers.mcp_chat import router as mcp_chat_router # Import the MCP chat router
 from repo_src.backend.routers.todos import router as todos_router # Import the new todos router
+from repo_src.backend.routers.dashboard import router as dashboard_router # Import the dashboard router
+from repo_src.backend.routers.insights import router as insights_router # Import the insights router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -66,6 +68,8 @@ app.include_router(chat_router)
 app.include_router(mcp_chat_router)
 app.include_router(transcribe_router)
 app.include_router(todos_router)
+app.include_router(dashboard_router)
+app.include_router(insights_router)
 
 @app.get("/")
 async def read_root():

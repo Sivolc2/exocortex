@@ -1,5 +1,6 @@
 # --- Global ---
 workspace/
+datalake/
 .DS_Store
 .env
 .env.*
