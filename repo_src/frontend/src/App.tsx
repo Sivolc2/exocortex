@@ -4,6 +4,7 @@ import SettingsModal from './components/SettingsModal'
 import IndexEditor from './components/IndexEditor';
 import TodoView from './components/TodoView';
 import DashboardView from './components/DashboardView';
+import { useTheme } from './contexts/ThemeContext';
 
 interface FileTokenInfo {
   file_path: string;
@@ -16,10 +17,12 @@ interface Message {
 }
 
 function App() {
+  const { theme, toggleTheme } = useTheme();
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null)
-  const [currentView, setCurrentView] = useState<'chat' | 'knowledge-chat' | 'index' | 'todo' | 'dashboard'>('chat');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'chat' | 'index'>('dashboard');
+  const [chatSubView, setChatSubView] = useState<'repo-chat' | 'knowledge-chat' | 'todo'>('repo-chat');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptionStatus, setTranscriptionStatus] = useState('');
@@ -140,17 +143,17 @@ function App() {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = { role: 'user', content: input };
-    const setCurrentMessages = currentView === 'knowledge-chat' ? setKnowledgeMessages : setMessages;
-    
+    const setCurrentMessages = chatSubView === 'knowledge-chat' ? setKnowledgeMessages : setMessages;
+
     setCurrentMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
     setError(null);
 
     try {
-      // Choose API endpoint based on current view
-      const apiEndpoint = currentView === 'knowledge-chat' ? '/api/mcp-chat/' : '/api/chat/';
-      
+      // Choose API endpoint based on current chat sub-view
+      const apiEndpoint = chatSubView === 'knowledge-chat' ? '/api/mcp-chat/' : '/api/chat/';
+
       const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
@@ -187,10 +190,10 @@ function App() {
         }
         
         const tokenInfo = data.total_tokens ? ` (Total: ${data.total_tokens.toLocaleString()} tokens)` : '';
-        const sourcePrefix = currentView === 'knowledge-chat' ? 'Found in knowledge base' : 'Analyzing documents';
-        const toolMessage: Message = { 
-          role: 'tool', 
-          content: `${sourcePrefix}${tokenInfo}:\n\n${filesList}` 
+        const sourcePrefix = chatSubView === 'knowledge-chat' ? 'Found in knowledge base' : 'Analyzing documents';
+        const toolMessage: Message = {
+          role: 'tool',
+          content: `${sourcePrefix}${tokenInfo}:\n\n${filesList}`
         };
         setCurrentMessages(prev => [...prev, toolMessage]);
       }
@@ -208,9 +211,9 @@ function App() {
   };
 
   return (
-    <div className="chat-container">
+    <div className="app-container">
       {isSettingsOpen && (
-        <SettingsModal 
+        <SettingsModal
           onClose={() => setIsSettingsOpen(false)}
           selectionModel={selectionModel} setSelectionModel={setSelectionModel}
           executionModel={executionModel} setExecutionModel={setExecutionModel}
@@ -218,111 +221,176 @@ function App() {
         />
       )}
 
-      <header className="chat-header">
-        <h1>Exocortex</h1>
-        <div className="view-switcher">
-          <button onClick={() => setCurrentView('chat')} className={currentView === 'chat' ? 'active' : ''}>Repository Chat</button>
-          <button onClick={() => setCurrentView('knowledge-chat')} className={currentView === 'knowledge-chat' ? 'active' : ''}>Knowledge Chat</button>
-          <button onClick={() => setCurrentView('index')} className={currentView === 'index' ? 'active' : ''}>Index Editor</button>
-          <button onClick={() => setCurrentView('todo')} className={currentView === 'todo' ? 'active' : ''}>To-Do</button>
-          <button onClick={() => setCurrentView('dashboard')} className={currentView === 'dashboard' ? 'active' : ''}>Dashboard</button>
+      {/* Top Navigation Bar */}
+      <nav className="top-nav">
+        <div className="nav-brand">
+          <h1>Exocortex</h1>
         </div>
-        <div className="data-source-filters">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={enabledSources.discord}
-              onChange={() => handleSourceToggle('discord')}
-            />
-            Discord
-          </label>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={enabledSources.notion}
-              onChange={() => handleSourceToggle('notion')}
-            />
-            Notion
-          </label>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={enabledSources.obsidian}
-              onChange={() => handleSourceToggle('obsidian')}
-            />
-            Obsidian
-          </label>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={enabledSources.chat_exports}
-              onChange={() => handleSourceToggle('chat_exports')}
-            />
-            Messages
-          </label>
-        </div>
-        <div className="header-actions">
-          <button onClick={handleToggleRecording} className={`record-button ${isRecording ? 'recording' : ''}`}>
-            {isRecording ? 'Stop Recording' : 'Start Recording'}
-          </button>
-          <button className="settings-button" onClick={() => setIsSettingsOpen(true)}>Settings</button>
-        </div>
-      </header>
 
-      {(currentView === 'chat' || currentView === 'knowledge-chat') && (
-        <>
-          <div className="messages-container">
-            {(currentView === 'chat' ? messages : knowledgeMessages).map((msg, index) => (
-              <div key={index} className={`message-wrapper ${msg.role}`}>
-                <div className="message-content">
-                  <div className="message-role">{msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}</div>
-                  <p>{msg.content}</p>
+        <div className="nav-main">
+          <button
+            onClick={() => setCurrentView('dashboard')}
+            className={`nav-button ${currentView === 'dashboard' ? 'active' : ''}`}
+          >
+            Dashboard
+          </button>
+          <button
+            onClick={() => setCurrentView('chat')}
+            className={`nav-button ${currentView === 'chat' ? 'active' : ''}`}
+          >
+            Chat
+          </button>
+          <button
+            onClick={() => setCurrentView('index')}
+            className={`nav-button ${currentView === 'index' ? 'active' : ''}`}
+          >
+            Index
+          </button>
+        </div>
+
+        <div className="nav-actions">
+          <button
+            onClick={toggleTheme}
+            className="theme-toggle-button"
+            title={`Switch to ${theme === 'museum' ? 'Blueprint' : 'Museum'} theme`}
+          >
+            {theme === 'museum' ? '📐 Blueprint' : '🎨 Museum'}
+          </button>
+          <button className="settings-button" onClick={() => setIsSettingsOpen(true)}>
+            Settings
+          </button>
+        </div>
+      </nav>
+
+      {/* Main Content Area */}
+      <main className="main-content">
+        {currentView === 'dashboard' && (
+          <DashboardView />
+        )}
+
+        {currentView === 'chat' && (
+          <div className="chat-view">
+            {/* Chat Sub-Navigation */}
+            <div className="chat-sub-nav">
+              <button
+                onClick={() => setChatSubView('repo-chat')}
+                className={`sub-nav-button ${chatSubView === 'repo-chat' ? 'active' : ''}`}
+              >
+                Repository Chat
+              </button>
+              <button
+                onClick={() => setChatSubView('knowledge-chat')}
+                className={`sub-nav-button ${chatSubView === 'knowledge-chat' ? 'active' : ''}`}
+              >
+                Knowledge Chat
+              </button>
+              <button
+                onClick={() => setChatSubView('todo')}
+                className={`sub-nav-button ${chatSubView === 'todo' ? 'active' : ''}`}
+              >
+                To-Do Generator
+              </button>
+            </div>
+
+            {/* Chat Controls */}
+            {(chatSubView === 'repo-chat' || chatSubView === 'knowledge-chat') && (
+              <div className="chat-controls">
+                <div className="data-source-filters">
+                  <span className="filter-label">Data Sources:</span>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={enabledSources.discord}
+                      onChange={() => handleSourceToggle('discord')}
+                    />
+                    Discord
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={enabledSources.notion}
+                      onChange={() => handleSourceToggle('notion')}
+                    />
+                    Notion
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={enabledSources.obsidian}
+                      onChange={() => handleSourceToggle('obsidian')}
+                    />
+                    Obsidian
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={enabledSources.chat_exports}
+                      onChange={() => handleSourceToggle('chat_exports')}
+                    />
+                    Messages
+                  </label>
                 </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="message-wrapper assistant">
-                <div className="message-content">
-                  <div className="message-role">Assistant</div>
-                  <div className="loading-indicator">
-                    <span>{currentView === 'knowledge-chat' ? 'QUERYING KNOWLEDGE BASE' : 'ANALYZING'}</span>
-                    <span className="cursor"></span>
-                  </div>
-                </div>
+                <button
+                  onClick={handleToggleRecording}
+                  className={`record-button ${isRecording ? 'recording' : ''}`}
+                >
+                  {isRecording ? 'Stop Recording' : 'Start Recording'}
+                </button>
               </div>
             )}
-            {error && <div className="error-message">Error: {error}</div>}
-            <div ref={messagesEndRef} />
+
+            {/* Chat Content */}
+            {chatSubView === 'todo' ? (
+              <TodoView />
+            ) : (
+              <div className="chat-content">
+                <div className="messages-container">
+                  {(chatSubView === 'knowledge-chat' ? knowledgeMessages : messages).map((msg, index) => (
+                    <div key={index} className={`message-wrapper ${msg.role}`}>
+                      <div className="message-content">
+                        <div className="message-role">{msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}</div>
+                        <p>{msg.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {isLoading && (
+                    <div className="message-wrapper assistant">
+                      <div className="message-content">
+                        <div className="message-role">Assistant</div>
+                        <div className="loading-indicator">
+                          <span>{chatSubView === 'knowledge-chat' ? 'QUERYING KNOWLEDGE BASE' : 'ANALYZING'}</span>
+                          <span className="cursor"></span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {error && <div className="error-message">Error: {error}</div>}
+                  <div ref={messagesEndRef} />
+                </div>
+                <div className="transcription-status">{transcriptionStatus}</div>
+                <form onSubmit={handleSubmit} className="chat-input-form">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder={chatSubView === 'knowledge-chat' ?
+                      "Ask about your notes, research, meetings, or any topics in your knowledge base..." :
+                      "Ask a question about the documentation..."
+                    }
+                    aria-label="Chat input"
+                    disabled={isLoading}
+                  />
+                  <button type="submit" disabled={isLoading}>{isLoading ? 'Sending...' : 'Send'}</button>
+                </form>
+              </div>
+            )}
           </div>
-          <div className="transcription-status">{transcriptionStatus}</div>
-          <form onSubmit={handleSubmit} className="chat-input-form">
-            <input 
-              type="text" 
-              value={input} 
-              onChange={(e) => setInput(e.target.value)} 
-              placeholder={currentView === 'knowledge-chat' ? 
-                "Ask about your notes, research, meetings, or any topics in your knowledge base..." : 
-                "Ask a question about the documentation..."
-              }
-              aria-label="Chat input" 
-              disabled={isLoading} 
-            />
-            <button type="submit" disabled={isLoading}>{isLoading ? 'Sending...' : 'Send'}</button>
-          </form>
-        </>
-      )}
+        )}
 
-      {currentView === 'index' && (
-        <IndexEditor />
-      )}
-
-      {currentView === 'todo' && (
-        <TodoView />
-      )}
-
-      {currentView === 'dashboard' && (
-        <DashboardView />
-      )}
+        {currentView === 'index' && (
+          <IndexEditor />
+        )}
+      </main>
     </div>
   );
 }

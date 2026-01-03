@@ -1,55 +1,151 @@
+/* Import Google Fonts for Museum theme */
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Work+Sans:wght@300;400;500;600&display=swap');
+
+/* Base CSS Variables */
 :root {
   --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: 'Roboto Mono', monospace;
+  --font-mono: 'Roboto Mono', 'Courier New', monospace;
 
-  /* A professional sci-fi palette inspired by GitHub Dark Dimmed */
-  --color-bg: #0D1117;
-  --color-bg-secondary: #161B22;
-  --color-border: #30363D;
-  --color-border-hover: #8B949E;
-  
-  --color-text-primary: #C9D1D9;
-  --color-text-secondary: #8B949E;
-  
-  --color-accent: #58A6FF;
-  --color-accent-glow: rgba(88, 166, 255, 0.2);
-  --color-accent-hover: #79C0FF;
-  
-  --color-user-msg-bg: #21262D;
-  --color-user-msg-border: var(--color-accent);
-  
-  --color-assistant-msg-bg: var(--color-bg-secondary);
-  --color-tool-msg-bg: rgba(48, 54, 61, 0.5);
-
-  font-family: var(--font-primary);
-  line-height: 1.6;
-  font-weight: 400;
-  
-  color-scheme: light dark;
-  color: var(--color-text-primary);
-  background-color: var(--color-bg);
-  
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale; 
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Blueprint Theme - Technical, blueprint-style with blue tones */
+[data-theme="blueprint"] {
+  --font-display: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
+
+  /* Background colors */
+  --color-bg: #0a0e1a;
+  --color-bg-secondary: #121829;
+  --color-bg-tertiary: #1a2139;
+
+  /* Border colors */
+  --color-border: #1e3a5f;
+  --color-border-hover: #2e4a6f;
+  --color-border-subtle: #0f1f35;
+
+  /* Text colors */
+  --color-text-primary: #e3eaf2;
+  --color-text-secondary: #8b9cb8;
+  --color-text-tertiary: #5a6b85;
+  --color-text-muted: #3a4a60;
+
+  /* Accent colors */
+  --color-accent: #4a9eff;
+  --color-accent-glow: rgba(74, 158, 255, 0.3);
+  --color-accent-hover: #6bb1ff;
+  --color-accent-secondary: #3d7acc;
+
+  /* Message backgrounds */
+  --color-user-msg-bg: #1a2847;
+  --color-user-msg-border: #4a9eff;
+  --color-assistant-msg-bg: #151e33;
+  --color-tool-msg-bg: rgba(30, 58, 95, 0.5);
+
+  /* Status colors */
+  --color-success: #4caf50;
+  --color-error: #f44336;
+  --color-warning: #ff9800;
+
+  font-family: var(--font-body);
+  line-height: 1.6;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg);
+}
+
+/* Museum Theme - Sophisticated pitch-black minimalist */
+[data-theme="museum"] {
+  --font-display: 'EB Garamond', 'Cormorant Garamond', serif;
+  --font-body: 'Work Sans', sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
+
+  /* Background colors */
+  --color-bg: #000000;
+  --color-bg-secondary: #0a0a0a;
+  --color-bg-tertiary: #141414;
+
+  /* Border colors */
+  --color-border: #1a1a1a;
+  --color-border-hover: #2a2a2a;
+  --color-border-subtle: #0d0d0d;
+
+  /* Text colors */
+  --color-text-primary: #cccccc;
+  --color-text-secondary: #888888;
+  --color-text-tertiary: #666666;
+  --color-text-muted: #444444;
+
+  /* Accent colors */
+  --color-accent: #999999;
+  --color-accent-glow: rgba(153, 153, 153, 0.2);
+  --color-accent-hover: #aaaaaa;
+  --color-accent-secondary: #777777;
+
+  /* Message backgrounds */
+  --color-user-msg-bg: #0f0f0f;
+  --color-user-msg-border: #333333;
+  --color-assistant-msg-bg: #0a0a0a;
+  --color-tool-msg-bg: rgba(26, 26, 26, 0.5);
+
+  /* Status colors */
+  --color-success: #6b8e6b;
+  --color-error: #9b6b6b;
+  --color-warning: #9b8e6b;
+
+  font-family: var(--font-body);
+  line-height: 1.7;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg);
+}
+
+/* Global Styles */
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px; 
+  padding: 0;
+  min-width: 320px;
   min-height: 100vh;
-  /* Subtle grid background for a tech feel */
+  overflow-x: hidden;
+}
+
+[data-theme="blueprint"] body {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 30px 30px;
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(74, 158, 255, 0.03) 2px,
+      rgba(74, 158, 255, 0.03) 4px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(74, 158, 255, 0.03) 2px,
+      rgba(74, 158, 255, 0.03) 4px
+    );
+  background-size: 40px 40px;
+  background-position: -1px -1px;
+}
+
+[data-theme="museum"] body {
+  background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.01) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.01) 0%, transparent 50%),
+              #000000;
 }
 
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  text-align: center;
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
 } 
